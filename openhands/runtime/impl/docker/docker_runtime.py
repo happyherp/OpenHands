@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 from typing import Callable
 from uuid import UUID
 
@@ -270,6 +271,31 @@ class DockerRuntime(ActionExecutionClient):
             app_config=self.config,
         )
 
+        # Prepare volumes configuration
+        final_volumes = volumes or {}
+        
+        # Conditionally mount Docker socket if configured
+        if self.config.sandbox.mount_docker_socket:
+            docker_socket_path = '/var/run/docker.sock'
+            # Check if Docker socket exists on host
+            if os.path.exists(docker_socket_path):
+                self.log(
+                    'warning',
+                    f'Mounting Docker socket to enable Docker-in-Docker functionality. '
+                    f'SECURITY WARNING: This grants container access to the host Docker daemon '
+                    f'with root-equivalent privileges. Use only in trusted environments.',
+                )
+                final_volumes[docker_socket_path] = {
+                    'bind': docker_socket_path, 
+                    'mode': 'rw'
+                }
+            else:
+                self.log(
+                    'warning',
+                    f'Docker socket mounting requested but {docker_socket_path} not found on host. '
+                    f'Docker-in-Docker functionality will not be available.',
+                )
+                
         try:
             self.container = self.docker_client.containers.run(
                 self.runtime_container_image,
@@ -280,7 +306,7 @@ class DockerRuntime(ActionExecutionClient):
                 name=self.container_name,
                 detach=True,
                 environment=environment,
-                volumes={**volumes, '/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'}},
+                volumes=final_volumes,
                 device_requests=(
                     [docker.types.DeviceRequest(capabilities=[['gpu']], count=-1)]
                     if self.config.sandbox.enable_gpu

@@ -210,11 +210,25 @@ _run_setup:
 	@until nc -z localhost $(BACKEND_PORT); do sleep 0.1; done
 	@echo "$(GREEN)Backend started successfully.$(RESET)"
 
-# Run the app (standard mode)
+# Check if running in WSL
+_is_wsl:
+	@if [ "$$(uname -r | grep -i microsoft)" ]; then \
+		echo "true"; \
+	else \
+		echo "false"; \
+	fi
+
+# Run the app (automatically detects WSL)
 run:
 	@echo "$(YELLOW)Running the app...$(RESET)"
 	@$(MAKE) -s _run_setup
-	@$(MAKE) -s start-frontend
+	@IS_WSL=$$($(MAKE) -s _is_wsl); \
+	if [ "$$IS_WSL" = "true" ]; then \
+		echo "$(BLUE)WSL environment detected, using WSL mode...$(RESET)"; \
+		cd frontend && echo "$(BLUE)Starting frontend with npm (WSL mode)...$(RESET)" && npm run dev_wsl -- --port $(FRONTEND_PORT); \
+	else \
+		$(MAKE) -s start-frontend; \
+	fi
 	@echo "$(GREEN)Application started successfully.$(RESET)"
 
 # Run the app (in docker)
@@ -231,7 +245,7 @@ docker-run:
 		docker compose up $(OPTIONS); \
 	fi
 
-# Run the app (WSL mode)
+# Run the app (explicitly WSL mode) - kept for backward compatibility
 run-wsl:
 	@echo "$(YELLOW)Running the app in WSL mode...$(RESET)"
 	@$(MAKE) -s _run_setup
@@ -300,4 +314,4 @@ help:
 
 # Phony targets
 .PHONY: build check-dependencies check-python check-npm check-docker check-poetry install-python-dependencies install-frontend-dependencies install-pre-commit-hooks lint start-backend start-frontend run run-wsl setup-config setup-config-prompts help
-.PHONY: docker-dev docker-run
+.PHONY: docker-dev docker-run _is_wsl _run_setup

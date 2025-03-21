@@ -34,11 +34,38 @@ export function ExpandableMessage({
 
   useEffect(() => {
     if (id && i18n.exists(id)) {
-      setHeadline(t(id));
+      let translatedHeadline = t(id);
+      
+      // Extract file path for read/edit operations to display in headline
+      if ((id === "read_file_contents" || id === "edit_file_contents") && message) {
+        // Look for file path patterns in the message
+        const readMatch = message.match(/I read the file (.+?)\./);
+        const editMatch = message.match(/I edited the file (.+?)\./);
+        const createMatch = message.match(/\[New file (.+?) is created/);
+        const existingFileMatch = message.match(/\[Existing file (.+?) is edited/);
+        
+        let filePath = null;
+        if (readMatch && readMatch[1]) {
+          filePath = readMatch[1];
+        } else if (editMatch && editMatch[1]) {
+          filePath = editMatch[1];
+        } else if (createMatch && createMatch[1]) {
+          filePath = createMatch[1];
+        } else if (existingFileMatch && existingFileMatch[1]) {
+          filePath = existingFileMatch[1];
+        }
+        
+        if (filePath) {
+          // Append file path to the headline
+          translatedHeadline += ` ${filePath}`;
+        }
+      }
+      
+      setHeadline(translatedHeadline);
       setDetails(message);
       setShowDetails(false);
     }
-  }, [id, message, i18n.language]);
+  }, [id, message, i18n.language, t]);
 
   const statusIconClasses = "h-4 w-4 ml-2 inline";
 

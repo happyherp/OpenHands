@@ -36,21 +36,20 @@ export function ExpandableMessage({
 
   useEffect(() => {
     if (id && i18n.exists(id)) {
-      // Just translate the basic headline without filepath
-      const translatedHeadline = t(id);
+      let translatedHeadline = t(id);
+      
+      // For file operations, replace the headline with a more concise format
+      if (id === "read_file_contents" && filepath) {
+        translatedHeadline = `Read ${filepath}`;
+      } else if (id === "edit_file_contents" && filepath) {
+        translatedHeadline = `Edited ${filepath}`;
+      }
       
       setHeadline(translatedHeadline);
       setDetails(message);
       setShowDetails(false);
     }
-  }, [id, message, i18n.language, t]);
-
-  // Debug log to see what's actually in the filepath prop
-  useEffect(() => {
-    if (filepath) {
-      console.log(`File operation on path: ${filepath}`);
-    }
-  }, [filepath]);
+  }, [id, message, i18n.language, t, filepath]);
 
   const statusIconClasses = "h-4 w-4 ml-2 inline";
 
@@ -94,12 +93,6 @@ export function ExpandableMessage({
             {headline && (
               <>
                 {headline}
-                {/* Directly show filepath here if it exists */}
-                {filepath && (
-                  <span className="ml-2 text-info">
-                    {filepath}
-                  </span>
-                )}
                 <button
                   type="button"
                   onClick={() => setShowDetails(!showDetails)}

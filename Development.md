@@ -63,8 +63,6 @@ Once the setup is complete, this command starts both the backend and frontend se
 make run
 ```
 
-**Note for WSL Users:** If you're running in Windows Subsystem for Linux (WSL), OpenHands will automatically detect this environment and use the appropriate settings. You no longer need to use `make run-wsl` as the system will automatically adapt for WSL environments.
-
 #### Option B: Individual Server Startup
 - **Start the Backend Server:** If you prefer, you can start the backend server independently to focus on backend-related tasks or configurations.
     ```bash

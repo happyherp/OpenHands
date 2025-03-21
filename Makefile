@@ -314,4 +314,4 @@ help:
 
 # Phony targets
 .PHONY: build check-dependencies check-python check-npm check-docker check-poetry install-python-dependencies install-frontend-dependencies install-pre-commit-hooks lint start-backend start-frontend run run-wsl setup-config setup-config-prompts help
-.PHONY: docker-dev docker-run _is_wsl _run_setup
+.PHONY: docker-dev docker-run

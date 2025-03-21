@@ -38,11 +38,19 @@ export function ExpandableMessage({
     if (id && i18n.exists(id)) {
       let translatedHeadline = t(id);
       
-      // For file operations, replace the headline with a more concise format
-      if (id === "read_file_contents" && filepath) {
-        translatedHeadline = `Read ${filepath}`;
-      } else if (id === "edit_file_contents" && filepath) {
-        translatedHeadline = `Edited ${filepath}`;
+      // For file operations, use i18n with filepath variable
+      if ((id === "read_file_contents" || id === "edit_file_contents") && filepath) {
+        // Use existing translation keys with interpolation
+        // For file operations, use simpler keys if they exist or fall back to regular translation
+        const fileOpKey = id === "read_file_contents" ? "file_read_path" : "file_edit_path";
+        
+        if (i18n.exists(fileOpKey)) {
+          // If we have dedicated keys for file operations with paths
+          translatedHeadline = t(fileOpKey, { path: filepath });
+        } else {
+          // If we don't have specific keys yet, gracefully fall back to including the path
+          translatedHeadline = `${translatedHeadline} ${filepath}`;
+        }
       }
       
       setHeadline(translatedHeadline);

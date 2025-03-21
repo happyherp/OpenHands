@@ -4121,6 +4121,10 @@
     "ACTION_MESSAGE$READ": {
         "en": "Reading the contents of a file",
         "zh-CN": "读取",
+        
+    "file_read_path": {
+        "en": "Read {{path}}",
+        "zh-CN": "读取 {{path}}",
         "zh-TW": "讀取",
         "ko-KR": "읽기",
         "ja": "読み取り",
@@ -4132,22 +4136,6 @@
         "pt": "Lendo o conteúdo de um arquivo",
         "es": "Leyendo el contenido de un archivo",
         "tr": "Dosya içeriği okunuyor"
-    },
-    "file_read_path": {
-        "en": "Read {{path}}",
-        "zh-CN": "读取 {{path}}",
-        "zh-TW": "讀取 {{path}}",
-        "ko-KR": "읽기 {{path}}",
-        "ja": "読み取り {{path}}",
-        "no": "Les {{path}}",
-        "ar": "قراءة {{path}}",
-        "de": "Lese {{path}}",
-        "fr": "Lecture de {{path}}",
-        "it": "Lettura di {{path}}",
-        "pt": "Ler {{path}}",
-        "es": "Leer {{path}}",
-        "tr": "Oku {{path}}"
-    },
     },
     "ACTION_MESSAGE$EDIT": {
         "en": "Editing the contents of a file",
@@ -4163,22 +4151,6 @@
         "pt": "Editando o conteúdo de um arquivo",
         "es": "Editando el contenido de un archivo",
         "tr": "Dosya içeriği düzenleniyor"
-    },
-    "file_edit_path": {
-        "en": "Edited {{path}}",
-        "zh-CN": "已编辑 {{path}}",
-        "zh-TW": "已編輯 {{path}}",
-        "ko-KR": "편집됨 {{path}}",
-        "ja": "編集済み {{path}}",
-        "no": "Redigerte {{path}}",
-        "ar": "تم تحرير {{path}}",
-        "de": "Bearbeitet {{path}}",
-        "fr": "Modifié {{path}}",
-        "it": "Modificato {{path}}",
-        "pt": "Editado {{path}}",
-        "es": "Editado {{path}}",
-        "tr": "Düzenlendi {{path}}"
-    },
     },
     "ACTION_MESSAGE$WRITE": {
         "en": "Writing to a file",

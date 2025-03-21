@@ -4148,7 +4148,6 @@
         "es": "Leer {{path}}",
         "tr": "Oku {{path}}"
     },
-    },
     "ACTION_MESSAGE$EDIT": {
         "en": "Editing the contents of a file",
         "zh-CN": "编辑",
@@ -4178,7 +4177,6 @@
         "pt": "Editado {{path}}",
         "es": "Editado {{path}}",
         "tr": "Düzenlendi {{path}}"
-    },
     },
     "ACTION_MESSAGE$WRITE": {
         "en": "Writing to a file",

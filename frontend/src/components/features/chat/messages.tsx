@@ -26,6 +26,7 @@ export const Messages: React.FC<MessagesProps> = React.memo(
               id={message.translationID}
               message={message.content}
               success={message.success}
+              filepath={message.filepath}
             />
             {shouldShowConfirmationButtons && <ConfirmationButtons />}
           </div>

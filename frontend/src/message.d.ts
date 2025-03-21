@@ -8,4 +8,5 @@ export type Message = {
   pending?: boolean;
   translationID?: string;
   eventID?: number;
+  filepath?: string; // Added to store file paths for file operations
 };

@@ -160,9 +160,19 @@ export const chatSlice = createSlice({
       } else if (observationID === "read" || observationID === "edit") {
         // For read/edit operations, we consider it successful if there's content and no error
         
+        // Debug logging to see the observation payload
+        console.log("File operation observation:", {
+          id: observationID,
+          extras: observation.payload.extras,
+          hasExtras: !!observation.payload.extras,
+          hasPath: observation.payload.extras?.path ? true : false,
+          pathValue: observation.payload.extras?.path
+        });
+        
         // Add the file path to the message - path is available in extras
         if (observation.payload.extras && observation.payload.extras.path) {
           causeMessage.filepath = observation.payload.extras.path;
+          console.log("Set filepath:", causeMessage.filepath);
         }
 
         if (observation.payload.extras.impl_source === "oh_aci") {

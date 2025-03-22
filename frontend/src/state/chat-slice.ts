@@ -159,6 +159,11 @@ export const chatSlice = createSlice({
           .includes("error:");
       } else if (observationID === "read" || observationID === "edit") {
         // For read/edit operations, we consider it successful if there's content and no error
+        
+        // Add the file path to the message - path is available in extras
+        if (observation.payload.extras && observation.payload.extras.path) {
+          causeMessage.filepath = observation.payload.extras.path;
+        }
 
         if (observation.payload.extras.impl_source === "oh_aci") {
           causeMessage.success =

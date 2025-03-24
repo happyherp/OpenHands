@@ -29,6 +29,14 @@ build:
 	@$(MAKE) -s build-frontend
 	@echo "$(GREEN)Build completed successfully.$(RESET)"
 
+setup-dev:
+	@echo "$(GREEN)Setup project...$(RESET)"
+	@$(MAKE) -s check-dependencies
+	@$(MAKE) -s install-python-dependencies
+	@$(MAKE) -s install-frontend-dependencies
+	@$(MAKE) -s install-pre-commit-hooks
+	@echo "$(GREEN)Setup completed successfully.$(RESET)"
+
 check-dependencies:
 	@echo "$(YELLOW)Checking dependencies...$(RESET)"
 	@$(MAKE) -s check-system
@@ -197,6 +205,12 @@ start-frontend:
 	@echo "$(YELLOW)Starting frontend...$(RESET)"
 	@cd frontend && VITE_BACKEND_HOST=$(BACKEND_HOST_PORT) VITE_FRONTEND_PORT=$(FRONTEND_PORT) npm run dev -- --port $(FRONTEND_PORT) --host $(BACKEND_HOST)
 
+
+start-frontend-wsl:
+	@echo "$(YELLOW)Starting frontend...$(RESET)"
+	@cd frontend && VITE_BACKEND_HOST=$(BACKEND_HOST_PORT) VITE_FRONTEND_PORT=$(FRONTEND_PORT) npm run dev_wsl -- --port $(FRONTEND_PORT) --host $(BACKEND_HOST)
+
+
 # Common setup for running the app (non-callable)
 _run_setup:
 	@if [ "$(OS)" = "Windows_NT" ]; then \
@@ -235,7 +249,7 @@ docker-run:
 run-wsl:
 	@echo "$(YELLOW)Running the app in WSL mode...$(RESET)"
 	@$(MAKE) -s _run_setup
-	@cd frontend && echo "$(BLUE)Starting frontend with npm (WSL mode)...$(RESET)" && npm run dev_wsl -- --port $(FRONTEND_PORT)
+	@cd frontend && echo "$(BLUE)Starting frontend with npm (WSL mode)...$(RESET)" && VITE_BACKEND_HOST=$(BACKEND_HOST_PORT) VITE_FRONTEND_PORT=$(FRONTEND_PORT) npm run dev_wsl -- --port $(FRONTEND_PORT)
 	@echo "$(GREEN)Application started successfully in WSL mode.$(RESET)"
 
 # Setup config.toml

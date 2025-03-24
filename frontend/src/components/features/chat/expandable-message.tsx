@@ -17,6 +17,7 @@ interface ExpandableMessageProps {
   message: string;
   type: string;
   success?: boolean;
+  filepath?: string;  // Added to support structured file path
 }
 
 export function ExpandableMessage({
@@ -24,6 +25,7 @@ export function ExpandableMessage({
   message,
   type,
   success,
+  filepath,
 }: ExpandableMessageProps) {
   const { data: config } = useConfig();
   const { t, i18n } = useTranslation();
@@ -33,11 +35,18 @@ export function ExpandableMessage({
 
   useEffect(() => {
     if (id && i18n.exists(id)) {
-      setHeadline(t(id));
+      if ((id === "read_file_contents" || id === "edit_file_contents") && filepath) {
+        // Use dedicated keys for file operations with paths
+        const fileOpKey = id === "read_file_contents" ? "file_read_path" : "file_edit_path";
+        setHeadline(t(fileOpKey, { path: filepath }));
+      } else {
+        // For other types of messages
+        setHeadline(t(id));
+      }
       setDetails(message);
       setShowDetails(false);
     }
-  }, [id, message, i18n.language]);
+  }, [id, message, i18n.language, t, filepath]);
 
   const statusIconClasses = "h-4 w-4 ml-2 inline";
 

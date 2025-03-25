@@ -251,4 +251,46 @@ Please read the [CONTRIBUTING.md](../CONTRIBUTING.md) file for details on our co
 
 ## Troubleshooting
 
-TODO
+### Frontend Development Issues
+
+#### Fixing Console Errors on Windows
+
+When developing on Windows, you might encounter recurring network errors in the console:
+```
+GET http://localhost:59281/ net::ERR_EMPTY_RESPONSE
+```
+
+These occur because the frontend attempts to poll various hosts to check their availability.
+
+**Solution**: You can disable host polling with a feature flag:
+
+1. Open your browser console
+2. Run the following command:
+   ```js
+   localStorage.setItem('FEATURE_DISABLE_HOST_POLLING', 'true')
+   ```
+3. Refresh the page
+
+This will prevent the console errors while you're developing. To re-enable host polling:
+```js
+localStorage.removeItem('FEATURE_DISABLE_HOST_POLLING')
+```
+
+### Feature Flags
+
+The application supports various feature flags that can be used to enable/disable specific features. These flags are stored in `localStorage` and can be set through the browser console.
+
+To enable a feature flag:
+```js
+localStorage.setItem('FEATURE_FLAG_NAME', 'true')
+```
+
+To disable a feature flag:
+```js
+localStorage.setItem('FEATURE_FLAG_NAME', 'false')
+// or
+localStorage.removeItem('FEATURE_FLAG_NAME')
+```
+
+Available feature flags:
+- `DISABLE_HOST_POLLING`: Disables polling of web hosts, useful for development on Windows

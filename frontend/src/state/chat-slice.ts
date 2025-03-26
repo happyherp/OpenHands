@@ -126,6 +126,7 @@ export const chatSlice = createSlice({
         content: text,
         imageUrls: [],
         timestamp: new Date().toISOString(),
+        action: action, // Store the action in the message
       };
       state.messages.push(message);
     },
@@ -147,6 +148,7 @@ export const chatSlice = createSlice({
         return;
       }
       causeMessage.translationID = translationID;
+      causeMessage.observation = observation; // Store the observation in the message
       // Set success property based on observation type
       if (observationID === "run") {
         const commandObs = observation.payload as CommandObservation;

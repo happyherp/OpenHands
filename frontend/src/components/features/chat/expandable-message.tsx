@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Link } from "react-router";
+import { PayloadAction } from "@reduxjs/toolkit";
 import { code } from "../markdown/code";
 import { ol, ul } from "../markdown/list";
 import ArrowUp from "#/icons/angle-up-solid.svg?react";
@@ -11,12 +12,16 @@ import CheckCircle from "#/icons/check-circle-solid.svg?react";
 import XCircle from "#/icons/x-circle-solid.svg?react";
 import { cn } from "#/utils/utils";
 import { useConfig } from "#/hooks/query/use-config";
+import { OpenHandsObservation } from "#/types/core/observations";
+import { OpenHandsAction } from "#/types/core/actions";
 
 interface ExpandableMessageProps {
   id?: string;
   message: string;
   type: string;
   success?: boolean;
+  observation?: PayloadAction<OpenHandsObservation>;
+  action?: PayloadAction<OpenHandsAction>;
 }
 
 export function ExpandableMessage({
@@ -24,6 +29,8 @@ export function ExpandableMessage({
   message,
   type,
   success,
+  observation,
+  action,
 }: ExpandableMessageProps) {
   const { data: config } = useConfig();
   const { t, i18n } = useTranslation();
@@ -33,11 +40,12 @@ export function ExpandableMessage({
 
   useEffect(() => {
     if (id && i18n.exists(id)) {
-      setHeadline(t(id));
+      // Pass the observation and action directly to the translation function
+      setHeadline(t(id, { observation, action }));
       setDetails(message);
       setShowDetails(false);
     }
-  }, [id, message, i18n.language]);
+  }, [id, message, observation, action, i18n.language]);
 
   const statusIconClasses = "h-4 w-4 ml-2 inline";
 

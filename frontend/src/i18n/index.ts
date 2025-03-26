@@ -27,17 +27,6 @@ i18n
     fallbackLng: "en",
     debug: import.meta.env.NODE_ENV === "development",
     load: "languageOnly",
-    interpolation: {
-      escapeValue: true, // Default is true
-      // Define format function to handle special cases
-      format: (value, format, lng) => {
-        // If format is 'noEscape', don't escape the value
-        if (format === 'noEscape') {
-          return value;
-        }
-        return value;
-      }
-    }
   });
 
 export default i18n;

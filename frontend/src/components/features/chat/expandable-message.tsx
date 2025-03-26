@@ -15,6 +15,13 @@ import { useConfig } from "#/hooks/query/use-config";
 import { OpenHandsObservation } from "#/types/core/observations";
 import { OpenHandsAction } from "#/types/core/actions";
 
+// Function to decode HTML entities
+const decodeHtmlEntities = (text: string): string => {
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = text;
+  return textarea.value;
+};
+
 interface ExpandableMessageProps {
   id?: string;
   message: string;
@@ -41,7 +48,9 @@ export function ExpandableMessage({
   useEffect(() => {
     if (id && i18n.exists(id)) {
       // Pass the observation and action directly to the translation function
-      setHeadline(t(id, { observation, action }));
+      const translatedText = t(id, { observation, action });
+      // Decode any HTML entities in the translated text
+      setHeadline(decodeHtmlEntities(translatedText));
       setDetails(message);
       setShowDetails(false);
     }

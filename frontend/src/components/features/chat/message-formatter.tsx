@@ -4,7 +4,7 @@ import { OpenHandsAction } from "#/types/core/actions";
 import { OpenHandsObservation } from "#/types/core/observations";
 import { ActionFormatterFactory } from "./message-formatters/action-formatter-factory";
 import { ObservationFormatterFactory } from "./message-formatters/observation-formatter-factory";
-import { StyledExpandableMessage } from "./styled-expandable-message";
+import { ExpandableMessage } from "./expandable-message";
 
 export interface MessageFormatterProps {
   id?: string;
@@ -49,7 +49,7 @@ export function MessageFormatter({
   }
 
   return (
-    <StyledExpandableMessage
+    <ExpandableMessage
       id={id}
       title={title}
       content={content}

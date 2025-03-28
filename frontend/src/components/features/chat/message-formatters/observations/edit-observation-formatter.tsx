@@ -1,27 +1,21 @@
 import {
-  ObservationFormatter,
   ObservationFormatterProps,
-  FormattedMessage,
 } from "../types";
 import { DefaultObservationFormatter } from "./default-observation-formatter";
+import { EditObservation } from "#/types/core/observations";
 
-export class EditObservationFormatter implements ObservationFormatter {
-  props: ObservationFormatterProps;
-
-  defaultFormatter: DefaultObservationFormatter;
-
+export class EditObservationFormatter extends DefaultObservationFormatter {
   constructor(props: ObservationFormatterProps) {
-    this.props = props;
-    this.defaultFormatter = new DefaultObservationFormatter(props);
+    super(props);
   }
 
-  format(): FormattedMessage {
+  protected override _makeContent(): string {
     const { observation } = this.props;
-    const { title } = this.defaultFormatter.format();
+    const editObservation = observation.payload as EditObservation;
 
     // Determine if the edit was successful
     let success = false;
-    if (observation.payload.extras.impl_source === "oh_aci") {
+    if (editObservation.extras.impl_source === "oh_aci") {
       success =
         observation.payload.content.length > 0 &&
         !observation.payload.content.startsWith("ERROR:\n");
@@ -32,16 +26,10 @@ export class EditObservationFormatter implements ObservationFormatter {
     }
 
     // Format the content based on success
-    let content;
     if (success) {
-      content = `\`\`\`diff\n${observation.payload.extras.diff}\n\`\`\``;
+      return `\`\`\`diff\n${editObservation.extras.diff}\n\`\`\``;
     } else {
-      content = observation.payload.content;
+      return observation.payload.content;
     }
-
-    return {
-      title,
-      content,
-    };
   }
 }

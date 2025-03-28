@@ -1,31 +1,25 @@
 import {
-  ObservationFormatter,
   ObservationFormatterProps,
-  FormattedMessage,
 } from "../types";
 import { DefaultObservationFormatter } from "./default-observation-formatter";
+import { BrowseObservation } from "#/types/core/observations";
 
 const MAX_CONTENT_LENGTH = 1000;
 
-export class BrowseObservationFormatter implements ObservationFormatter {
-  props: ObservationFormatterProps;
-
-  defaultFormatter: DefaultObservationFormatter;
-
+export class BrowseObservationFormatter extends DefaultObservationFormatter {
   constructor(props: ObservationFormatterProps) {
-    this.props = props;
-    this.defaultFormatter = new DefaultObservationFormatter(props);
+    super(props);
   }
 
-  format(): FormattedMessage {
+  protected override _makeContent(): string {
     const { observation } = this.props;
-    const { title } = this.defaultFormatter.format();
+    const browseObservation = observation.payload as BrowseObservation;
 
     // For browse observations, we show the URL and content
-    let content = `**URL:** ${observation.payload.extras.url}\n`;
+    let content = `**URL:** ${browseObservation.extras.url}\n`;
 
-    if (observation.payload.extras.error) {
-      content += `\n\n**Error:**\n${observation.payload.extras.error}\n`;
+    if (browseObservation.extras.error) {
+      content += `\n\n**Error:**\n${browseObservation.extras.error}\n`;
     }
 
     content += `\n\n**Output:**\n${observation.payload.content}`;
@@ -34,9 +28,6 @@ export class BrowseObservationFormatter implements ObservationFormatter {
       content = `${content.slice(0, MAX_CONTENT_LENGTH)}...(truncated)`;
     }
 
-    return {
-      title,
-      content,
-    };
+    return content;
   }
 }

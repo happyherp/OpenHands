@@ -1,40 +1,28 @@
 import {
-  ObservationFormatter,
   ObservationFormatterProps,
-  FormattedMessage,
 } from "../types";
 import { DefaultObservationFormatter } from "./default-observation-formatter";
+import { WriteObservation } from "#/types/core/observations";
 
-export class WriteObservationFormatter implements ObservationFormatter {
-  props: ObservationFormatterProps;
-
-  defaultFormatter: DefaultObservationFormatter;
-
+export class WriteObservationFormatter extends DefaultObservationFormatter {
   constructor(props: ObservationFormatterProps) {
-    this.props = props;
-    this.defaultFormatter = new DefaultObservationFormatter(props);
+    super(props);
   }
 
-  format(): FormattedMessage {
+  protected override _makeContent(): string {
     const { observation } = this.props;
-    const { title } = this.defaultFormatter.format();
-
+    const writeObservation = observation.payload as WriteObservation;
+    
     // For write observations, we show the result
-    const path = observation.payload.extras.path || "";
+    const path = writeObservation.extras.path || "";
     const success = !observation.payload.content
       .toLowerCase()
       .includes("error:");
 
-    let content;
     if (success) {
-      content = `Successfully wrote to file: ${path}`;
+      return `Successfully wrote to file: ${path}`;
     } else {
-      content = `Failed to write to file: ${path}\n\n${observation.payload.content}`;
+      return `Failed to write to file: ${path}\n\n${observation.payload.content}`;
     }
-
-    return {
-      title,
-      content,
-    };
   }
 }

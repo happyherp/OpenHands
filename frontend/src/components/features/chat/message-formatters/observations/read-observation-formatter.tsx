@@ -1,30 +1,17 @@
 import {
-  ObservationFormatter,
   ObservationFormatterProps,
-  FormattedMessage,
 } from "../types";
 import { DefaultObservationFormatter } from "./default-observation-formatter";
+import { ReadObservation } from "#/types/core/observations";
 
-export class ReadObservationFormatter implements ObservationFormatter {
-  props: ObservationFormatterProps;
-
-  defaultFormatter: DefaultObservationFormatter;
-
+export class ReadObservationFormatter extends DefaultObservationFormatter {
   constructor(props: ObservationFormatterProps) {
-    this.props = props;
-    this.defaultFormatter = new DefaultObservationFormatter(props);
+    super(props);
   }
 
-  format(): FormattedMessage {
+  protected override _makeContent(): string {
     const { observation } = this.props;
-    const { title } = this.defaultFormatter.format();
-
     // For read observations, we format the content as code
-    const content = `\`\`\`\n${observation.payload.content}\n\`\`\``;
-
-    return {
-      title,
-      content,
-    };
+    return `\`\`\`\n${observation.payload.content}\n\`\`\``;
   }
 }

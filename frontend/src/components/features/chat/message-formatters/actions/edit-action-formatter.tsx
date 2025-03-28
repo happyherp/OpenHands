@@ -1,32 +1,23 @@
 import {
-  ActionFormatter,
   ActionFormatterProps,
-  FormattedMessage,
 } from "../types";
 import { DefaultActionFormatter } from "./default-action-formatter";
+import { FileEditAction } from "#/types/core/actions";
 
-export class EditActionFormatter implements ActionFormatter {
-  props: ActionFormatterProps;
-
-  defaultFormatter: DefaultActionFormatter;
-
+export class EditActionFormatter extends DefaultActionFormatter {
   constructor(props: ActionFormatterProps) {
-    this.props = props;
-    this.defaultFormatter = new DefaultActionFormatter(props);
+    super(props);
   }
 
-  format(): FormattedMessage {
+  protected override _makeContent(): string {
     const { action } = this.props;
-    const { title } = this.defaultFormatter.format();
-
+    const editAction = action.payload as FileEditAction;
+    
     // For edit actions, we show the path and the edit operation
-    const { path, old_str: oldStr, new_str: newStr } = action.payload.args;
+    const { path } = editAction.args;
+    const oldStr = editAction.args.old_str || '';
+    const newStr = editAction.args.new_str || '';
 
-    const formattedContent = `Editing file: ${path}\n\nReplacing:\n\`\`\`\n${oldStr}\n\`\`\`\n\nWith:\n\`\`\`\n${newStr}\n\`\`\``;
-
-    return {
-      title,
-      content: formattedContent,
-    };
+    return `Editing file: ${path}\n\nReplacing:\n\`\`\`\n${oldStr}\n\`\`\`\n\nWith:\n\`\`\`\n${newStr}\n\`\`\``;
   }
 }

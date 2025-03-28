@@ -1,30 +1,18 @@
 import {
-  ActionFormatter,
   ActionFormatterProps,
-  FormattedMessage,
 } from "../types";
 import { DefaultActionFormatter } from "./default-action-formatter";
+import { BrowseAction } from "#/types/core/actions";
 
-export class BrowseActionFormatter implements ActionFormatter {
-  props: ActionFormatterProps;
-
-  defaultFormatter: DefaultActionFormatter;
-
+export class BrowseActionFormatter extends DefaultActionFormatter {
   constructor(props: ActionFormatterProps) {
-    this.props = props;
-    this.defaultFormatter = new DefaultActionFormatter(props);
+    super(props);
   }
 
-  format(): FormattedMessage {
+  protected override _makeContent(): string {
     const { action } = this.props;
-    const { title } = this.defaultFormatter.format();
-
     // For browse actions, we show the URL
-    const formattedContent = `Browsing ${action.payload.args.url}`;
-
-    return {
-      title,
-      content: formattedContent,
-    };
+    const browseAction = action.payload as BrowseAction;
+    return `Browsing ${browseAction.args.url}`;
   }
 }

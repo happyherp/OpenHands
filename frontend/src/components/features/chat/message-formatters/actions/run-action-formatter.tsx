@@ -1,10 +1,10 @@
+import React, { ReactNode } from "react";
 import {
-  ActionFormatter,
   ActionFormatterProps,
-  FormattedMessage,
 } from "../types";
 import { DefaultActionFormatter } from "./default-action-formatter";
 import { ActionSecurityRisk } from "#/state/security-analyzer-slice";
+import { CommandAction } from "#/types/core/actions";
 
 const trimText = (text: string, maxLength: number): string => {
   if (!text) return "";
@@ -25,48 +25,47 @@ function getRiskText(risk: ActionSecurityRisk) {
   }
 }
 
-export class RunActionFormatter implements ActionFormatter {
-  props: ActionFormatterProps;
-
-  defaultFormatter: DefaultActionFormatter;
+export class RunActionFormatter extends DefaultActionFormatter {
+  private processedAction: ActionFormatterProps["action"];
 
   constructor(props: ActionFormatterProps) {
-    this.props = props;
+    super(props);
 
     // Process the command to trim it if needed
     const { action } = props;
-    const trimmedCommand = trimText(action.payload.args.command, 80);
-    const processedAction = {
+    const commandAction = action.payload as CommandAction;
+    const trimmedCommand = trimText(commandAction.args.command, 80);
+    this.processedAction = {
       ...action,
       payload: {
         ...action.payload,
         args: {
-          ...action.payload.args,
+          ...commandAction.args,
           command: trimmedCommand,
         },
-      },
+      } as CommandAction,
     };
-
-    this.defaultFormatter = new DefaultActionFormatter({
-      ...props,
-      action: processedAction,
-    });
   }
 
-  format(): FormattedMessage {
-    const { action } = this.props;
-    const { title } = this.defaultFormatter.format();
+  protected override _makeTitle(): ReactNode {
+    // Use the processed action with trimmed command for the title
+    const originalAction = this.props.action;
+    this.props.action = this.processedAction;
+    const title = super._makeTitle();
+    this.props.action = originalAction;
+    return title;
+  }
 
-    let content = `Command:\n\`${action.payload.args.command}\``;
+  protected override _makeContent(): string {
+    const { action } = this.props;
+    const commandAction = action.payload as CommandAction;
+    let content = `Command:\n\`${commandAction.args.command}\``;
 
     // Add security risk information if awaiting confirmation
-    if (action.payload.args.confirmation_state === "awaiting_confirmation") {
-      content += `\n\n${getRiskText(action.payload.args.security_risk as unknown as ActionSecurityRisk)}`;
+    if (commandAction.args.confirmation_state === "awaiting_confirmation") {
+      content += `\n\n${getRiskText(commandAction.args.security_risk)}`;
     }
 
-    return {
-      title,
-      content,
-    };
+    return content;
   }
 }

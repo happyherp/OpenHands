@@ -1,30 +1,18 @@
 import {
-  ActionFormatter,
   ActionFormatterProps,
-  FormattedMessage,
 } from "../types";
 import { DefaultActionFormatter } from "./default-action-formatter";
+import { BrowseInteractiveAction } from "#/types/core/actions";
 
-export class BrowseInteractiveActionFormatter implements ActionFormatter {
-  props: ActionFormatterProps;
-
-  defaultFormatter: DefaultActionFormatter;
-
+export class BrowseInteractiveActionFormatter extends DefaultActionFormatter {
   constructor(props: ActionFormatterProps) {
-    this.props = props;
-    this.defaultFormatter = new DefaultActionFormatter(props);
+    super(props);
   }
 
-  format(): FormattedMessage {
+  protected override _makeContent(): string {
     const { action } = this.props;
-    const { title } = this.defaultFormatter.format();
-
     // For browse_interactive actions, we show the browser actions
-    const formattedContent = `**Action:**\n\n\`\`\`python\n${action.payload.args.browser_actions}\n\`\`\``;
-
-    return {
-      title,
-      content: formattedContent,
-    };
+    const browseInteractiveAction = action.payload as BrowseInteractiveAction;
+    return `**Action:**\n\n\`\`\`python\n${browseInteractiveAction.args.browser_actions}\n\`\`\``;
   }
 }

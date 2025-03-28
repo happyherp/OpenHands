@@ -124,7 +124,7 @@ describe("MessageFormatter", () => {
         args: {
           path: "/path/to/file.txt",
           thought: "I need to read this file",
-          hidden: false
+          security_risk: null
         }
       }
     };
@@ -152,8 +152,7 @@ describe("MessageFormatter", () => {
         args: {
           path: "/path/to/file.txt",
           content: "Hello, world!",
-          thought: "I need to write to this file",
-          hidden: false
+          thought: "I need to write to this file"
         }
       }
     };
@@ -183,7 +182,7 @@ describe("MessageFormatter", () => {
           old_str: "Hello, world!",
           new_str: "Hello, OpenHands!",
           thought: "I need to edit this file",
-          hidden: false
+          security_risk: null
         }
       }
     };

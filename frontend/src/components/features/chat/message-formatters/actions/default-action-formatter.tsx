@@ -16,11 +16,11 @@ export class DefaultActionFormatter implements ActionFormatter {
   }
 
   protected _makeTitle(): ReactNode {
-    const { action, i18n } = this.props;
+    const { action } = this.props;
     const actionType = action.payload.action;
     const translationId = `ACTION_MESSAGE$${actionType.toUpperCase()}`;
 
-    return i18n.exists(translationId) ? (
+    return (
       <Trans
         i18nKey={translationId}
         values={{ action }}
@@ -29,9 +29,8 @@ export class DefaultActionFormatter implements ActionFormatter {
           path: <MonoComponent />,
           cmd: <MonoComponent />,
         }}
+        fallback={actionType}
       />
-    ) : (
-      actionType
     );
   }
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
+
 import { Message } from "#/message";
 import { FormatterFactory } from "./formatter-factory";
 import { ExpandableMessageProps } from "../expandable-message";
@@ -15,16 +15,9 @@ export function formatMessage(
   message: Message,
   props: Omit<ExpandableMessageProps, "title" | "content" | "type"> = {}
 ): React.ReactElement | null {
-  // Use the translation hook to get i18n helpers
-  const { t, i18n } = useTranslation();
-  const i18nHelpers = {
-    t,
-    exists: i18n.exists.bind(i18n),
-  };
-
   // If we have both an observation and an action, it means the action has been observed
   if (message.observation && message.action && message.type === "action") {
-    const formatter = FormatterFactory.createObservationFormatter(message.observation, i18nHelpers);
+    const formatter = FormatterFactory.createObservationFormatter(message.observation);
     return formatter.toExpandableMessage({
       id: message.translationID,
       success: message.success,
@@ -35,7 +28,7 @@ export function formatMessage(
   } 
   // If we only have an action, format it as an action
   else if (message.action && message.type === "action") {
-    const formatter = FormatterFactory.createActionFormatter(message.action, i18nHelpers);
+    const formatter = FormatterFactory.createActionFormatter(message.action);
     return formatter.toExpandableMessage({
       id: message.translationID,
       success: message.success,

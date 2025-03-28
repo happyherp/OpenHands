@@ -15,19 +15,12 @@ export interface MessageFormatter {
   toExpandableMessage(props?: Omit<ExpandableMessageProps, "title" | "content">): React.ReactElement;
 }
 
-export interface I18nHelpers {
-  t: (key: string, options?: Record<string, unknown>) => string;
-  exists: (key: string) => boolean;
-}
-
 export interface ActionFormatterProps {
   action: PayloadAction<OpenHandsAction>;
-  i18n: I18nHelpers;
 }
 
 export interface ObservationFormatterProps {
   observation: PayloadAction<OpenHandsObservation>;
-  i18n: I18nHelpers;
 }
 
 export interface ActionFormatter extends MessageFormatter {

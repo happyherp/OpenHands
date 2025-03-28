@@ -16,11 +16,11 @@ export class DefaultObservationFormatter implements ObservationFormatter {
   }
 
   protected _makeTitle(): ReactNode {
-    const { observation, i18n } = this.props;
+    const { observation } = this.props;
     const observationType = observation.payload.observation;
     const translationId = `OBSERVATION_MESSAGE$${observationType.toUpperCase()}`;
 
-    return i18n.exists(translationId) ? (
+    return (
       <Trans
         i18nKey={translationId}
         values={{ observation }}
@@ -29,9 +29,8 @@ export class DefaultObservationFormatter implements ObservationFormatter {
           path: <MonoComponent />,
           cmd: <MonoComponent />,
         }}
+        fallback={observationType}
       />
-    ) : (
-      observationType
     );
   }
 

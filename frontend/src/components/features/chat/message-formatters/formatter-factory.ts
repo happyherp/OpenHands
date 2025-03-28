@@ -6,7 +6,6 @@ import {
   ActionFormatterProps,
   ObservationFormatter,
   ObservationFormatterProps,
-  I18nHelpers,
 } from "./types";
 
 // Action formatters
@@ -29,9 +28,8 @@ import { BrowseObservationFormatter } from "./observations/browse-observation-fo
 export class FormatterFactory {
   static createActionFormatter(
     action: PayloadAction<OpenHandsAction>,
-    i18n: I18nHelpers,
   ): ActionFormatter {
-    const props: ActionFormatterProps = { action, i18n };
+    const props: ActionFormatterProps = { action };
 
     switch (action.payload.action) {
       case "run":
@@ -53,9 +51,8 @@ export class FormatterFactory {
 
   static createObservationFormatter(
     observation: PayloadAction<OpenHandsObservation>,
-    i18n: I18nHelpers,
   ): ObservationFormatter {
-    const props: ObservationFormatterProps = { observation, i18n };
+    const props: ObservationFormatterProps = { observation };
 
     switch (observation.payload.observation) {
       case "run":

@@ -75,6 +75,10 @@ class SandboxConfig(BaseModel):
     enable_gpu: bool = Field(default=False)
     docker_runtime_kwargs: dict | None = Field(default=None)
     selected_repo: str | None = Field(default=None)
+    mount_docker_socket: bool = Field(
+        default=False,
+        description="Whether to mount the Docker socket to enable Docker-in-Docker functionality. SECURITY WARNING: This grants container access to the host Docker daemon."
+    )
 
     model_config = {'extra': 'forbid'}
 

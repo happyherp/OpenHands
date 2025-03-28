@@ -130,7 +130,7 @@ export const chatSlice = createSlice({
         content: text,
         imageUrls: [],
         timestamp: new Date().toISOString(),
-        action: action, // Store the action in the message
+        action, // Store the action in the message
       };
 
       state.messages.push(message);

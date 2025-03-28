@@ -3,7 +3,7 @@ import type { Message } from "#/message";
 import { ChatMessage } from "#/components/features/chat/chat-message";
 import { ConfirmationButtons } from "#/components/shared/buttons/confirmation-buttons";
 import { ImageCarousel } from "../images/image-carousel";
-import { ExpandableMessage } from "./expandable-message";
+import { MessageFormatter } from "./message-formatter";
 
 interface MessagesProps {
   messages: Message[];
@@ -21,7 +21,7 @@ export const Messages: React.FC<MessagesProps> = React.memo(
       if (message.type === "error" || message.type === "action") {
         return (
           <div key={index}>
-            <ExpandableMessage
+            <MessageFormatter
               type={message.type}
               id={message.translationID}
               message={message.content}

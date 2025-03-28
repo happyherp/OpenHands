@@ -1,203 +1,64 @@
-import { useState, useEffect } from "react";
-import { useTranslation, Trans } from "react-i18next";
+import { useState, ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Link } from "react-router";
-import { PayloadAction } from "@reduxjs/toolkit";
 import { code } from "../markdown/code";
 import { ol, ul } from "../markdown/list";
 import ArrowUp from "#/icons/angle-up-solid.svg?react";
 import ArrowDown from "#/icons/angle-down-solid.svg?react";
-import CheckCircle from "#/icons/check-circle-solid.svg?react";
-import XCircle from "#/icons/x-circle-solid.svg?react";
-import { cn } from "#/utils/utils";
-import { useConfig } from "#/hooks/query/use-config";
-import { OpenHandsObservation } from "#/types/core/observations";
-import { OpenHandsAction } from "#/types/core/actions";
-import { MonoComponent } from "./mono-component";
 
-const trimText = (text: string, maxLength: number): string => {
-  if (!text) return '';
-  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-};
-
-interface ExpandableMessageProps {
-  id?: string;
-  message: string;
-  type: string;
-  success?: boolean;
-  observation?: PayloadAction<OpenHandsObservation>;
-  action?: PayloadAction<OpenHandsAction>;
+export interface ExpandableMessageProps {
+  title: ReactNode;
+  content: ReactNode;
+  initialExpanded?: boolean;
 }
 
 export function ExpandableMessage({
-  id,
-  message,
-  type,
-  success,
-  observation,
-  action,
+  title,
+  content,
+  initialExpanded = false,
 }: ExpandableMessageProps) {
-  const { data: config } = useConfig();
-  const { t, i18n } = useTranslation();
-  const [showDetails, setShowDetails] = useState(true);
-  const [details, setDetails] = useState(message);
-  const [translationId, setTranslationId] = useState<string | undefined>(id);
-  const [translationParams, setTranslationParams] = useState<any>({
-    observation,
-    action,
-  });
+  const [showDetails, setShowDetails] = useState(initialExpanded);
 
-  useEffect(() => {
-    if (id && i18n.exists(id)) {
-      let processedObservation = observation;
-      let processedAction = action;
-      
-      if (action && action.payload.action === 'run') {
-        const trimmedCommand = trimText(action.payload.args.command, 80);
-        processedAction = {
-          ...action,
-          payload: {
-            ...action.payload,
-            args: {
-              ...action.payload.args,
-              command: trimmedCommand
-            }
-          }
-        };
-      }
-      
-      if (observation && observation.payload.observation === 'run') {
-        const trimmedCommand = trimText(observation.payload.extras.command, 80);
-        processedObservation = {
-          ...observation,
-          payload: {
-            ...observation.payload,
-            extras: {
-              ...observation.payload.extras,
-              command: trimmedCommand
-            }
-          }
-        };
-      }
-      
-      setTranslationId(id);
-      setTranslationParams({ observation: processedObservation, action: processedAction });
-      setDetails(message);
-      setShowDetails(false);
+  // If content is a string, render it as Markdown, otherwise render it directly
+  const renderContent = () => {
+    if (typeof content === "string") {
+      return (
+        <Markdown
+          components={{
+            code,
+            ul,
+            ol,
+          }}
+          remarkPlugins={[remarkGfm]}
+        >
+          {content}
+        </Markdown>
+      );
     }
-  }, [id, message, observation, action, i18n.language]);
-
-  const statusIconClasses = "h-4 w-4 ml-2 inline";
-
-  if (
-    config?.FEATURE_FLAGS.ENABLE_BILLING &&
-    config?.APP_MODE === "saas" &&
-    id === "STATUS$ERROR_LLM_OUT_OF_CREDITS"
-  ) {
-    return (
-      <div
-        data-testid="out-of-credits"
-        className="flex gap-2 items-center justify-start border-l-2 pl-2 my-2 py-2 border-danger"
-      >
-        <div className="text-sm w-full">
-          <div className="font-bold text-danger">
-            {t("STATUS$ERROR_LLM_OUT_OF_CREDITS")}
-          </div>
-          <Link
-            className="mt-2 mb-2 w-full h-10 rounded flex items-center justify-center gap-2 bg-primary text-[#0D0F11]"
-            to="/settings/billing"
-          >
-            {t("BILLING$CLICK_TO_TOP_UP")}
-          </Link>
-        </div>
-      </div>
-    );
-  }
+    return content;
+  };
 
   return (
-    <div
-      className={cn(
-        "flex gap-2 items-center justify-start border-l-2 pl-2 my-2 py-2",
-        type === "error" ? "border-danger" : "border-neutral-300",
-      )}
-    >
-      <div className="text-sm w-full">
-        <div className="flex flex-row justify-between items-center w-full">
-          <span
-            className={cn(
-              "font-bold",
-              type === "error" ? "text-danger" : "text-neutral-300",
-            )}
+    <div>
+      <div className="flex flex-row justify-between items-center w-full">
+        <div className="flex items-center">
+          {title}
+          <button
+            type="button"
+            onClick={() => setShowDetails(!showDetails)}
+            className="cursor-pointer text-left ml-2"
           >
-            <>
-              {translationId && i18n.exists(translationId) ? (
-                <Trans
-                  i18nKey={translationId}
-                  values={translationParams}
-                  components={{
-                    bold: <strong />,
-                    path: <MonoComponent />,
-                    cmd: <MonoComponent />
-                  }}
-                />
-              ) : (
-                message
-              )}
-              <button
-                type="button"
-                onClick={() => setShowDetails(!showDetails)}
-                className="cursor-pointer text-left"
-              >
-                {showDetails ? (
-                  <ArrowUp
-                    className={cn(
-                      "h-4 w-4 ml-2 inline",
-                      type === "error" ? "fill-danger" : "fill-neutral-300",
-                    )}
-                  />
-                ) : (
-                  <ArrowDown
-                    className={cn(
-                      "h-4 w-4 ml-2 inline",
-                      type === "error" ? "fill-danger" : "fill-neutral-300",
-                    )}
-                  />
-                )}
-              </button>
-            </>
-          </span>
-          {type === "action" && success !== undefined && (
-            <span className="flex-shrink-0">
-              {success ? (
-                <CheckCircle
-                  data-testid="status-icon"
-                  className={cn(statusIconClasses, "fill-success")}
-                />
-              ) : (
-                <XCircle
-                  data-testid="status-icon"
-                  className={cn(statusIconClasses, "fill-danger")}
-                />
-              )}
-            </span>
-          )}
+            {showDetails ? (
+              <ArrowUp className="h-4 w-4 inline fill-current" />
+            ) : (
+              <ArrowDown className="h-4 w-4 inline fill-current" />
+            )}
+          </button>
         </div>
-        {showDetails && (
-          <div className="text-sm overflow-auto">
-            <Markdown
-              components={{
-                code,
-                ul,
-                ol,
-              }}
-              remarkPlugins={[remarkGfm]}
-            >
-              {details}
-            </Markdown>
-          </div>
-        )}
       </div>
+      {showDetails && (
+        <div className="text-sm overflow-auto mt-2">{renderContent()}</div>
+      )}
     </div>
   );
 }

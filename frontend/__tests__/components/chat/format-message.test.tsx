@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen, fireEvent } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { renderWithProviders } from "test-utils";
-import { MessageFormatter } from "#/components/features/chat/message-formatter";
+import { formatMessage } from "#/components/features/chat/message-formatters/format-message";
 import { PayloadAction } from "@reduxjs/toolkit";
 import { OpenHandsAction } from "#/types/core/actions";
 import { OpenHandsObservation } from "#/types/core/observations";
+import { Message } from "#/message";
 
 vi.mock("react-i18next", async () => {
   const actual = await vi.importActual("react-i18next");
@@ -22,14 +23,7 @@ vi.mock("react-i18next", async () => {
   };
 });
 
-describe("MessageFormatter", () => {
-  it("should render a simple message without action or observation", () => {
-    renderWithProviders(
-      <MessageFormatter message="Simple message" type="thought" />
-    );
-    expect(screen.getByText("Simple message")).toBeInTheDocument();
-  });
-
+describe("formatMessage", () => {
   it("should render an action message", () => {
     const action: PayloadAction<OpenHandsAction> = {
       type: "action",
@@ -49,13 +43,16 @@ describe("MessageFormatter", () => {
       }
     };
 
-    renderWithProviders(
-      <MessageFormatter 
-        message="Running command" 
-        type="action" 
-        action={action}
-      />
-    );
+    const message: Message = {
+      sender: "assistant",
+      content: "Running command",
+      timestamp: new Date().toISOString(),
+      type: "action",
+      action
+    };
+
+    const formattedMessage = formatMessage(message);
+    renderWithProviders(<>{formattedMessage}</>);
     
     expect(screen.getByText("ACTION_MESSAGE$RUN")).toBeInTheDocument();
   });
@@ -98,15 +95,18 @@ describe("MessageFormatter", () => {
       }
     };
 
-    renderWithProviders(
-      <MessageFormatter 
-        message="Command executed" 
-        type="action" 
-        action={action}
-        observation={observation}
-        success={true}
-      />
-    );
+    const message: Message = {
+      sender: "assistant",
+      content: "Command executed",
+      timestamp: new Date().toISOString(),
+      type: "action",
+      action,
+      observation,
+      success: true
+    };
+
+    const formattedMessage = formatMessage(message);
+    renderWithProviders(<>{formattedMessage}</>);
     
     expect(screen.getByText("OBSERVATION_MESSAGE$RUN")).toBeInTheDocument();
     expect(screen.getByTestId("status-icon")).toHaveClass("fill-success");
@@ -129,13 +129,16 @@ describe("MessageFormatter", () => {
       }
     };
 
-    renderWithProviders(
-      <MessageFormatter 
-        message="Reading file" 
-        type="action" 
-        action={action}
-      />
-    );
+    const message: Message = {
+      sender: "assistant",
+      content: "Reading file",
+      timestamp: new Date().toISOString(),
+      type: "action",
+      action
+    };
+
+    const formattedMessage = formatMessage(message);
+    renderWithProviders(<>{formattedMessage}</>);
     
     expect(screen.getByText("ACTION_MESSAGE$READ")).toBeInTheDocument();
   });
@@ -152,18 +155,22 @@ describe("MessageFormatter", () => {
         args: {
           path: "/path/to/file.txt",
           content: "Hello, world!",
-          thought: "I need to write to this file"
+          thought: "I need to write to this file",
+          security_risk: null
         }
       }
     };
 
-    renderWithProviders(
-      <MessageFormatter 
-        message="Writing to file" 
-        type="action" 
-        action={action}
-      />
-    );
+    const message: Message = {
+      sender: "assistant",
+      content: "Writing to file",
+      timestamp: new Date().toISOString(),
+      type: "action",
+      action
+    };
+
+    const formattedMessage = formatMessage(message);
+    renderWithProviders(<>{formattedMessage}</>);
     
     expect(screen.getByText("ACTION_MESSAGE$WRITE")).toBeInTheDocument();
   });
@@ -187,14 +194,29 @@ describe("MessageFormatter", () => {
       }
     };
 
-    renderWithProviders(
-      <MessageFormatter 
-        message="Editing file" 
-        type="action" 
-        action={action}
-      />
-    );
+    const message: Message = {
+      sender: "assistant",
+      content: "Editing file",
+      timestamp: new Date().toISOString(),
+      type: "action",
+      action
+    };
+
+    const formattedMessage = formatMessage(message);
+    renderWithProviders(<>{formattedMessage}</>);
     
     expect(screen.getByText("ACTION_MESSAGE$EDIT")).toBeInTheDocument();
+  });
+
+  it("should return null for unsupported message types", () => {
+    const message: Message = {
+      sender: "assistant",
+      content: "Unsupported message",
+      timestamp: new Date().toISOString(),
+      type: "thought"
+    };
+
+    const formattedMessage = formatMessage(message);
+    expect(formattedMessage).toBeNull();
   });
 });

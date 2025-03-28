@@ -3,7 +3,7 @@ import type { Message } from "#/message";
 import { ChatMessage } from "#/components/features/chat/chat-message";
 import { ConfirmationButtons } from "#/components/shared/buttons/confirmation-buttons";
 import { ImageCarousel } from "../images/image-carousel";
-import { MessageFormatter } from "./message-formatter";
+import { formatMessage } from "./message-formatters/format-message";
 
 interface MessagesProps {
   messages: Message[];
@@ -19,19 +19,24 @@ export const Messages: React.FC<MessagesProps> = React.memo(
         isAwaitingUserConfirmation;
 
       if (message.type === "error" || message.type === "action") {
-        return (
-          <div key={index}>
-            <MessageFormatter
-              type={message.type}
-              id={message.translationID}
-              message={message.content}
-              success={message.success}
-              observation={message.observation}
-              action={message.action}
-            />
-            {shouldShowConfirmationButtons && <ConfirmationButtons />}
-          </div>
-        );
+        const formattedMessage = formatMessage(message);
+        
+        // If we couldn't format the message, show a fallback
+        if (!formattedMessage && message.type === "error") {
+          return (
+            <div key={index} className="text-red-500">
+              {message.content}
+              {shouldShowConfirmationButtons && <ConfirmationButtons />}
+            </div>
+          );
+        } else if (formattedMessage) {
+          return (
+            <div key={index}>
+              {formattedMessage}
+              {shouldShowConfirmationButtons && <ConfirmationButtons />}
+            </div>
+          );
+        }
       }
 
       return (

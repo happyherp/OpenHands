@@ -3,15 +3,16 @@ import React, { ReactNode } from "react";
 import {
   ActionFormatter,
   ActionFormatterProps,
-  FormattedMessage,
 } from "../types";
 import { MonoComponent } from "../../mono-component";
-import { ExpandableMessage, ExpandableMessageProps } from "../../expandable-message";
+import { ExpandableMessageProps } from "../../expandable-message";
+import { BaseFormatter } from "../base-formatter";
 
-export class DefaultActionFormatter implements ActionFormatter {
+export class DefaultActionFormatter extends BaseFormatter implements ActionFormatter {
   props: ActionFormatterProps;
 
   constructor(props: ActionFormatterProps) {
+    super();
     this.props = props;
   }
 
@@ -35,27 +36,13 @@ export class DefaultActionFormatter implements ActionFormatter {
   }
 
   protected _makeContent(): string {
-    // Default content is empty, specific formatters will override this
     return "";
   }
 
-  format(): FormattedMessage {
-    return {
-      title: this._makeTitle(),
-      content: this._makeContent(),
-    };
-  }
-
   toExpandableMessage(props: Omit<ExpandableMessageProps, "title" | "content"> = {}): React.ReactElement {
-    const { title, content } = this.format();
-    
-    return (
-      <ExpandableMessage
-        title={title}
-        content={content}
-        type="action"
-        {...props}
-      />
-    );
+    return super.toExpandableMessage({
+      type: "action",
+      ...props
+    });
   }
 }

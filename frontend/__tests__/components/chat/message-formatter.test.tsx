@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { renderWithProviders } from "test-utils";
 import { MessageFormatter } from "#/components/features/chat/message-formatter";
 import { PayloadAction } from "@reduxjs/toolkit";
@@ -110,5 +110,92 @@ describe("MessageFormatter", () => {
     
     expect(screen.getByText("OBSERVATION_MESSAGE$RUN")).toBeInTheDocument();
     expect(screen.getByTestId("status-icon")).toHaveClass("fill-success");
+  });
+
+  it("should render a read action message", () => {
+    const action: PayloadAction<OpenHandsAction> = {
+      type: "action",
+      payload: {
+        id: 1,
+        action: "read",
+        source: "agent",
+        message: "Reading file",
+        timestamp: new Date().toISOString(),
+        args: {
+          path: "/path/to/file.txt",
+          thought: "I need to read this file",
+          hidden: false
+        }
+      }
+    };
+
+    renderWithProviders(
+      <MessageFormatter 
+        message="Reading file" 
+        type="action" 
+        action={action}
+      />
+    );
+    
+    expect(screen.getByText("ACTION_MESSAGE$READ")).toBeInTheDocument();
+  });
+
+  it("should render a write action message", () => {
+    const action: PayloadAction<OpenHandsAction> = {
+      type: "action",
+      payload: {
+        id: 1,
+        action: "write",
+        source: "agent",
+        message: "Writing to file",
+        timestamp: new Date().toISOString(),
+        args: {
+          path: "/path/to/file.txt",
+          content: "Hello, world!",
+          thought: "I need to write to this file",
+          hidden: false
+        }
+      }
+    };
+
+    renderWithProviders(
+      <MessageFormatter 
+        message="Writing to file" 
+        type="action" 
+        action={action}
+      />
+    );
+    
+    expect(screen.getByText("ACTION_MESSAGE$WRITE")).toBeInTheDocument();
+  });
+
+  it("should render an edit action message", () => {
+    const action: PayloadAction<OpenHandsAction> = {
+      type: "action",
+      payload: {
+        id: 1,
+        action: "edit",
+        source: "agent",
+        message: "Editing file",
+        timestamp: new Date().toISOString(),
+        args: {
+          path: "/path/to/file.txt",
+          old_str: "Hello, world!",
+          new_str: "Hello, OpenHands!",
+          thought: "I need to edit this file",
+          hidden: false
+        }
+      }
+    };
+
+    renderWithProviders(
+      <MessageFormatter 
+        message="Editing file" 
+        type="action" 
+        action={action}
+      />
+    );
+    
+    expect(screen.getByText("ACTION_MESSAGE$EDIT")).toBeInTheDocument();
   });
 });

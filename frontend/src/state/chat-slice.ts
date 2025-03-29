@@ -144,7 +144,8 @@ export const chatSlice = createSlice({
       }
 
       // Use the formatter factory to get the appropriate formatter
-      const formatter = FormatterFactory.createObservationFormatter(observation);
+      const formatter =
+        FormatterFactory.createObservationFormatter(observation);
       causeMessage.content = formatter._makeContent(); // Use the formatter to generate content
     },
 

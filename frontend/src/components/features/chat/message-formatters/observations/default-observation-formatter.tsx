@@ -1,14 +1,14 @@
 import { Trans } from "react-i18next";
 import React, { ReactNode } from "react";
-import {
-  ObservationFormatter,
-  ObservationFormatterProps,
-} from "../types";
+import { ObservationFormatter, ObservationFormatterProps } from "../types";
 import { MonoComponent } from "../../mono-component";
 import { ExpandableMessageProps } from "../../expandable-message";
 import { BaseFormatter } from "../base-formatter";
 
-export class DefaultObservationFormatter extends BaseFormatter implements ObservationFormatter {
+export class DefaultObservationFormatter
+  extends BaseFormatter
+  implements ObservationFormatter
+{
   props: ObservationFormatterProps;
 
   constructor(props: ObservationFormatterProps) {
@@ -40,10 +40,12 @@ export class DefaultObservationFormatter extends BaseFormatter implements Observ
     return observation.payload.content;
   }
 
-  toExpandableMessage(props: Omit<ExpandableMessageProps, "title" | "content"> = {}): React.ReactElement {
+  toExpandableMessage(
+    props: Omit<ExpandableMessageProps, "title" | "content"> = {},
+  ): React.ReactElement {
     return super.toExpandableMessage({
       type: "observation",
-      ...props
+      ...props,
     });
   }
 }

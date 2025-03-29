@@ -1,7 +1,5 @@
 import React, { ReactNode } from "react";
-import {
-  ActionFormatterProps,
-} from "../types";
+import { ActionFormatterProps } from "../types";
 import { DefaultActionFormatter } from "./default-action-formatter";
 import { ActionSecurityRisk } from "#/state/security-analyzer-slice";
 import { CommandAction } from "#/types/core/actions";

@@ -1,6 +1,4 @@
-import {
-  ObservationFormatterProps,
-} from "../types";
+import { ObservationFormatterProps } from "../types";
 import { DefaultObservationFormatter } from "./default-observation-formatter";
 import { ReadObservation } from "#/types/core/observations";
 

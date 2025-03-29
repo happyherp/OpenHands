@@ -1,6 +1,4 @@
-import {
-  ActionFormatterProps,
-} from "../types";
+import { ActionFormatterProps } from "../types";
 import { DefaultActionFormatter } from "./default-action-formatter";
 import { FileWriteAction } from "#/types/core/actions";
 
@@ -14,9 +12,9 @@ export class WriteActionFormatter extends DefaultActionFormatter {
   override _makeContent(): string {
     const { action } = this.props;
     const writeAction = action.payload as FileWriteAction;
-    
+
     // For write actions, we show the path and truncated content
-    let content = writeAction.args.content;
+    let { content } = writeAction.args;
     if (content.length > MAX_CONTENT_LENGTH) {
       content = `${content.slice(0, MAX_CONTENT_LENGTH)}...`;
     }

@@ -1,14 +1,14 @@
 import { Trans } from "react-i18next";
 import React, { ReactNode } from "react";
-import {
-  ActionFormatter,
-  ActionFormatterProps,
-} from "../types";
+import { ActionFormatter, ActionFormatterProps } from "../types";
 import { MonoComponent } from "../../mono-component";
 import { ExpandableMessageProps } from "../../expandable-message";
 import { BaseFormatter } from "../base-formatter";
 
-export class DefaultActionFormatter extends BaseFormatter implements ActionFormatter {
+export class DefaultActionFormatter
+  extends BaseFormatter
+  implements ActionFormatter
+{
   props: ActionFormatterProps;
 
   constructor(props: ActionFormatterProps) {
@@ -39,10 +39,12 @@ export class DefaultActionFormatter extends BaseFormatter implements ActionForma
     return "";
   }
 
-  toExpandableMessage(props: Omit<ExpandableMessageProps, "title" | "content"> = {}): React.ReactElement {
+  toExpandableMessage(
+    props: Omit<ExpandableMessageProps, "title" | "content"> = {},
+  ): React.ReactElement {
     return super.toExpandableMessage({
       type: "action",
-      ...props
+      ...props,
     });
   }
 }

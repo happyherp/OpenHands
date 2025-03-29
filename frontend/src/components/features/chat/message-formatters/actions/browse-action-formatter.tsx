@@ -1,6 +1,4 @@
-import {
-  ActionFormatterProps,
-} from "../types";
+import { ActionFormatterProps } from "../types";
 import { DefaultActionFormatter } from "./default-action-formatter";
 import { BrowseAction } from "#/types/core/actions";
 

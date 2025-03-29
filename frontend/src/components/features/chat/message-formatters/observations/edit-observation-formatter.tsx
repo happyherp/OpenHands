@@ -1,6 +1,4 @@
-import {
-  ObservationFormatterProps,
-} from "../types";
+import { ObservationFormatterProps } from "../types";
 import { DefaultObservationFormatter } from "./default-observation-formatter";
 import { EditObservation } from "#/types/core/observations";
 
@@ -28,8 +26,7 @@ export class EditObservationFormatter extends DefaultObservationFormatter {
     // Format the content based on success
     if (success) {
       return `\`\`\`diff\n${editObservation.extras.diff}\n\`\`\``;
-    } else {
-      return observation.payload.content;
     }
+    return observation.payload.content;
   }
 }

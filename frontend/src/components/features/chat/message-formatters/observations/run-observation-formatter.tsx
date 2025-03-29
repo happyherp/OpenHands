@@ -1,7 +1,5 @@
 import React, { ReactNode } from "react";
-import {
-  ObservationFormatterProps,
-} from "../types";
+import { ObservationFormatterProps } from "../types";
 import { DefaultObservationFormatter } from "./default-observation-formatter";
 import { CommandObservation } from "#/types/core/observations";
 
@@ -44,7 +42,7 @@ export class RunObservationFormatter extends DefaultObservationFormatter {
   override _makeContent(): string {
     const { observation } = this.props;
     const commandObservation = observation.payload as CommandObservation;
-    
+
     // Format the content with command and output
     let { content } = observation.payload;
     if (content.length > 1000) {

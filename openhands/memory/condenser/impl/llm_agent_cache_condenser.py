@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List
 
+from openhands.core.logger import openhands_logger as logger
 from openhands.core.message import Message, TextContent
 from openhands.events.action.agent import CondensationAction
 from openhands.events.event import Event
@@ -74,6 +75,7 @@ class LLMAgentCacheCondenser(Condenser):
         """
         # Check if the number of events exceeds max_size
         if len(events) > self.max_size:
+            logger.info(f'Condensing events due to max size({self.max_size}) limit.')
             return True
 
         # Check if the last event is from the user and contains "CONDENSE!"
@@ -83,11 +85,15 @@ class LLMAgentCacheCondenser(Condenser):
             try:
                 if hasattr(last_event, 'source') and last_event.source == 'user':
                     # Check if the message contains "CONDENSE!"
+                    CONDENSATION_TRIGGER_WORD = 'CONDENSE!'
                     if (
                         hasattr(last_event, 'message')
                         and isinstance(last_event.message, str)
-                        and 'CONDENSE!' in last_event.message
+                        and CONDENSATION_TRIGGER_WORD in last_event.message
                     ):
+                        logger.info(
+                            f"Condensing events due to trigger word '{CONDENSATION_TRIGGER_WORD}'."
+                        )
                         return True
             except (AttributeError, TypeError):
                 # If we can't access the attributes, just continue
@@ -119,10 +125,38 @@ class LLMAgentCacheCondenser(Condenser):
                 'These are required for the condenser to work properly.'
             )
 
+        return self._do_condensation(events)
+
+    def _do_condensation(self, events: List[Event]) -> Condensation | View:
+        """Do a condensation for the given events.
+
+        Args:
+            events: The events to condense.
+
+        Returns:
+            A Condensation or View object based on the condensation process.
+        """
+        messages = self._build_messages_for_condensation(events)
+
+        # Get the response from the LLM
+        response = self.llm.completion(
+            messages=self.llm.format_messages_for_llm(messages),
+        )
+        self.add_metadata('response', response.model_dump())
+
+        rewrite_commands, keep_message_indices = self._parse_condensation_response(
+            response
+        )
+        condensation = self._condense_events(
+            events, rewrite_commands, keep_message_indices
+        )
+        return condensation
+
+    def _build_messages_for_condensation(self, events: List[Event]) -> list[Message]:
         # Process the events into messages using the same format as the agent
         # This ensures we can take advantage of the LLM's cache
         initial_messages = self.conversation_memory.process_initial_messages(
-            with_caching=self.llm.is_caching_prompt_active()
+            with_caching=True
         )
 
         messages = self.conversation_memory.process_events(
@@ -139,36 +173,36 @@ I need you to condense our conversation history to make it more efficient. Pleas
 1. Identify which previous messages can be removed without losing important context
 2. You have two options for condensing the conversation:
 
-   Option A - Keep specific messages:
-   For each message you decide to keep, respond with "KEEP: [message number]"
+    Option A - Keep specific messages:
+    For each message you decide to keep, respond with "KEEP: [message number]"
 
-   Option B - Rewrite a range of messages:
-   You can replace a sequence of messages with a single summary using:
+    Option B - Rewrite a range of messages:
+    You can replace a sequence of messages with a single summary using:
 
-   REWRITE [start-message-number] TO [end-message-number] WITH:
-   [new-content]
-   END-REWRITE
+    REWRITE [start-message-number] TO [end-message-number] WITH:
+    [new-content]
+    END-REWRITE
 
-   This will replace all messages from start to end (inclusive) with a single message containing the new content.
+    This will replace all messages from start to end (inclusive) with a single message containing the new content.
 
 3. You can use both options together. For example:
-   KEEP: 5
-   KEEP: 8
-   REWRITE 10 TO 15 WITH:
-   User asked about database schema and agent explained the tables and relationships.
-   END-REWRITE
-   KEEP: 18
+    KEEP: 5
+    KEEP: 8
+    REWRITE 10 TO 15 WITH:
+    User asked about database schema and agent explained the tables and relationships.
+    END-REWRITE
+    KEEP: 18
 
 4. Focus on keeping messages that contain:
-   - User requirements and constraints
-   - Important code changes and decisions
-   - Key error messages and debugging information
-   - Critical context needed for the current task
+    - User requirements and constraints
+    - Important code changes and decisions
+    - Key error messages and debugging information
+    - Critical context needed for the current task
 
 5. You can remove or rewrite messages that:
-   - Contain redundant information
-   - Show intermediate steps that are no longer relevant
-   - Contain verbose output that has already been processed
+    - Contain redundant information
+    - Show intermediate steps that are no longer relevant
+    - Contain verbose output that has already been processed
 
 Please respond ONLY with KEEP and REWRITE commands as described above.
 Do not include any other text in your response.
@@ -179,18 +213,15 @@ Do not include any other text in your response.
             Message(role='user', content=[TextContent(text=condensation_instructions)])
         )
 
-        # Apply prompt caching to ensure the LLM uses its cache
-        if self.llm.is_caching_prompt_active():
-            self.conversation_memory.apply_prompt_caching(messages)
+        self.conversation_memory.apply_prompt_caching(messages)
+        return messages
 
-        # Get the response from the LLM
-        response = self.llm.completion(
-            messages=self.llm.format_messages_for_llm(messages),
-        )
-
+    def _parse_condensation_response(
+        self, response: Message
+    ) -> tuple[list[RewriteCommand], list[int]]:
         # Parse the response to get the list of messages to keep and any REWRITE commands
         keep_message_indices = []
-        rewrite_command = None
+        rewrite_commands = []
         rewrite_start = None
         rewrite_end = None
         rewrite_content: list[str] = []
@@ -230,28 +261,42 @@ Do not include any other text in your response.
 
                     if i < len(lines) and lines[i].strip() == 'END-REWRITE':
                         # Found the end marker, create the rewrite command
-                        rewrite_command = RewriteCommand(
-                            start=rewrite_start,
-                            end=rewrite_end,
-                            content='\n'.join(rewrite_content),
+                        rewrite_commands.append(
+                            RewriteCommand(
+                                start=rewrite_start,
+                                end=rewrite_end,
+                                content='\n'.join(rewrite_content),
+                            )
                         )
 
                     # Skip the END-REWRITE line
                     i += 1
 
-                except (ValueError, IndexError):
-                    # If the command is not properly formatted, move to the next line
+                except (ValueError, IndexError) as e:
+                    logger.info(
+                        f"Error parsing line '{line}': {e}. Skipping this line."
+                    )
                     i += 1
             else:
                 # Skip any other lines
                 i += 1
 
+        return rewrite_commands, keep_message_indices
+
+    def _condense_events(
+        self,
+        events: List[Event],
+        rewrite_commands: list[RewriteCommand],
+        keep_message_indices: list[int],
+    ) -> Condensation | View:
         # If we couldn't parse any indices and there's no rewrite command, keep all events
-        if not keep_message_indices and not rewrite_command:
+        if not keep_message_indices and not rewrite_commands:
             return View.from_events(events)
 
         # Always keep the first few events (system prompt, initial user message, etc.)
         keep_event_ids = set(event.id for event in events[: self.keep_first])
+
+        summary = ''
 
         # Add the events to keep based on the LLM's response
         for index in keep_message_indices:
@@ -263,12 +308,7 @@ Do not include any other text in your response.
             event.id for event in events if event.id not in keep_event_ids
         ]
 
-        # If there are no events to forget, just return the view
-        if not forgotten_event_ids:
-            return View.from_events(events)
-
-        # Handle REWRITE command if present
-        if rewrite_command:
+        for rewrite_command in rewrite_commands:
             # Get the range of events to rewrite
             start_idx = rewrite_command.start
             end_idx = rewrite_command.end
@@ -284,23 +324,22 @@ Do not include any other text in your response.
                         if event_id not in forgotten_event_ids:
                             forgotten_event_ids.append(event_id)
 
-                # Create a summary from the rewrite content
-                summary = rewrite_command.content
-
-                # Add metadata about the rewrite
-                self.add_metadata('rewrite_performed', True)
-                self.add_metadata('rewrite_range', f'{start_idx}-{end_idx}')
+                summary += rewrite_command.content + '\n'
             else:
-                # Create a standard summary if the range is invalid
-                summary = f'The conversation history has been condensed. {len(forgotten_event_ids)} less important messages have been removed to focus on the key information.'
-                self.add_metadata('rewrite_performed', False)
+                logger.info(
+                    f'Invalid range for REWRITE command: {start_idx} to {end_idx}. Skipping this command.'
+                )
+                summary += (
+                    f'The conversation history has been condensed. {len(forgotten_event_ids)} less important messages have been removed to focus on the key information.'
+                    + '\n'
+                )
         else:
-            # Create a standard summary if no rewrite command
-            summary = f'The conversation history has been condensed. {len(forgotten_event_ids)} less important messages have been removed to focus on the key information.'
-            self.add_metadata('rewrite_performed', False)
+            summary += (
+                f'The conversation history has been condensed. {len(forgotten_event_ids)} less important messages have been removed to focus on the key information.'
+                + '\n'
+            )
 
         # Add metadata for debugging and analysis
-        self.add_metadata('response', response.model_dump())
         self.add_metadata('metrics', self.llm.metrics.get())
         self.add_metadata('kept_events', len(keep_event_ids))
         self.add_metadata('forgotten_events', len(forgotten_event_ids))

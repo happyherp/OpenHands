@@ -9,7 +9,7 @@ export class WriteObservationFormatter extends DefaultObservationFormatter {
     super(props);
   }
 
-  protected override _makeContent(): string {
+  override _makeContent(): string {
     const { observation } = this.props;
     const writeObservation = observation.payload as WriteObservation;
     

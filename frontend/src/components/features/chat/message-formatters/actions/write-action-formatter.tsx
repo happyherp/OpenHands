@@ -11,7 +11,7 @@ export class WriteActionFormatter extends DefaultActionFormatter {
     super(props);
   }
 
-  protected override _makeContent(): string {
+  override _makeContent(): string {
     const { action } = this.props;
     const writeAction = action.payload as FileWriteAction;
     

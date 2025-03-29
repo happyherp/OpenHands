@@ -9,7 +9,7 @@ export class BrowseActionFormatter extends DefaultActionFormatter {
     super(props);
   }
 
-  protected override _makeContent(): string {
+  override _makeContent(): string {
     const { action } = this.props;
     // For browse actions, we show the URL
     const browseAction = action.payload as BrowseAction;

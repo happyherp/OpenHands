@@ -9,7 +9,7 @@ export class ReadObservationFormatter extends DefaultObservationFormatter {
     super(props);
   }
 
-  protected override _makeContent(): string {
+  override _makeContent(): string {
     const { observation } = this.props;
     // For read observations, we format the content as code
     return `\`\`\`\n${observation.payload.content}\n\`\`\``;

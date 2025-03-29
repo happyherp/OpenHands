@@ -9,7 +9,7 @@ export class BrowseInteractiveActionFormatter extends DefaultActionFormatter {
     super(props);
   }
 
-  protected override _makeContent(): string {
+  override _makeContent(): string {
     const { action } = this.props;
     // For browse_interactive actions, we show the browser actions
     const browseInteractiveAction = action.payload as BrowseInteractiveAction;

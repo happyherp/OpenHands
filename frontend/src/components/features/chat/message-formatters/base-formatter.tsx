@@ -4,7 +4,7 @@ import { ExpandableMessage, ExpandableMessageProps } from "../expandable-message
 
 export abstract class BaseFormatter implements MessageFormatter {
   protected abstract _makeTitle(): ReactNode;
-  protected abstract _makeContent(): string;
+  abstract _makeContent(): string;
 
   toExpandableMessage(props: Omit<ExpandableMessageProps, "title" | "content"> = {}): React.ReactElement {
     return (

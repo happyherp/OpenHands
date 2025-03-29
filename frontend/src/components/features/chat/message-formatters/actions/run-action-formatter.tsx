@@ -56,7 +56,7 @@ export class RunActionFormatter extends DefaultActionFormatter {
     return title;
   }
 
-  protected override _makeContent(): string {
+  override _makeContent(): string {
     const { action } = this.props;
     const commandAction = action.payload as CommandAction;
     let content = `Command:\n\`${commandAction.args.command}\``;

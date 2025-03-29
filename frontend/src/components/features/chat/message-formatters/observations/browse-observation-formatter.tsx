@@ -11,7 +11,7 @@ export class BrowseObservationFormatter extends DefaultObservationFormatter {
     super(props);
   }
 
-  protected override _makeContent(): string {
+  override _makeContent(): string {
     const { observation } = this.props;
     const browseObservation = observation.payload as BrowseObservation;
 

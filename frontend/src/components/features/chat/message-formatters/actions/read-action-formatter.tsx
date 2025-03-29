@@ -9,7 +9,7 @@ export class ReadActionFormatter extends DefaultActionFormatter {
     super(props);
   }
 
-  protected override _makeContent(): string {
+  override _makeContent(): string {
     const { action } = this.props;
     // For read actions, we just show the path
     const readAction = action.payload as FileReadAction;

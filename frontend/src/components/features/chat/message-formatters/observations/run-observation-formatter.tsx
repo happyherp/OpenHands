@@ -41,7 +41,7 @@ export class RunObservationFormatter extends DefaultObservationFormatter {
     return title;
   }
 
-  protected override _makeContent(): string {
+  override _makeContent(): string {
     const { observation } = this.props;
     const commandObservation = observation.payload as CommandObservation;
     

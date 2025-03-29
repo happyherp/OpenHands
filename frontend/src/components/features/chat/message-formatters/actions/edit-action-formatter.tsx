@@ -9,7 +9,7 @@ export class EditActionFormatter extends DefaultActionFormatter {
     super(props);
   }
 
-  protected override _makeContent(): string {
+  override _makeContent(): string {
     const { action } = this.props;
     const editAction = action.payload as FileEditAction;
     

@@ -1,14 +1,9 @@
-import { ObservationFormatterProps } from "../types";
 import { DefaultObservationFormatter } from "./default-observation-formatter";
 import { IPythonObservation } from "#/types/core/observations";
 
 const MAX_CONTENT_LENGTH = 1000;
 
 export class RunIPythonObservationFormatter extends DefaultObservationFormatter {
-  constructor(props: ObservationFormatterProps) {
-    super(props);
-  }
-
   override _makeContent(): string {
     const { observation } = this.props;
     const ipythonObservation = observation.payload as IPythonObservation;

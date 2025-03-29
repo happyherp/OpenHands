@@ -1,5 +1,3 @@
-import React, { ReactNode } from "react";
-import { ActionFormatterProps } from "../types";
 import { DefaultActionFormatter } from "./default-action-formatter";
 import { ActionSecurityRisk } from "#/state/security-analyzer-slice";
 import { IPythonAction } from "#/types/core/actions";
@@ -19,10 +17,6 @@ function getRiskText(risk: ActionSecurityRisk) {
 }
 
 export class RunIPythonActionFormatter extends DefaultActionFormatter {
-  constructor(props: ActionFormatterProps) {
-    super(props);
-  }
-
   override _makeContent(): string {
     const { action } = this.props;
     const ipythonAction = action.payload as IPythonAction;

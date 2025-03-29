@@ -15,6 +15,20 @@ export class DefaultObservationFormatter
     super();
     this.props = props;
   }
+  
+  /**
+   * Default implementation for determining if an observation represents a successful operation
+   * By default, we consider an operation successful if there's content and it doesn't contain error messages
+   */
+  determineSuccess(): boolean {
+    const { observation } = this.props;
+    const content = observation.payload.content;
+    
+    // Default implementation checks for common error patterns
+    return content.length > 0 && 
+           !content.toLowerCase().includes("error:") &&
+           !content.startsWith("ERROR:\n");
+  }
 
   protected _makeTitle(): ReactNode {
     const { observation } = this.props;

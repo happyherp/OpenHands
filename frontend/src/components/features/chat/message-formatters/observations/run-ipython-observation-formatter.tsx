@@ -16,4 +16,13 @@ export class RunIPythonObservationFormatter extends DefaultObservationFormatter 
 
     return `Code:\n\`\`\`\n${ipythonObservation.extras.code}\n\`\`\`\n\nOutput:\n\`\`\`\n${content.trim() || "[Execution finished with no output]"}\n\`\`\``;
   }
+  
+  /**
+   * For IPython observations, we consider it successful if there's no error message
+   */
+  override determineSuccess(): boolean {
+    const { observation } = this.props;
+    const content = observation.payload.content;
+    return !content.toLowerCase().includes("error:");
+  }
 }

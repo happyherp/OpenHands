@@ -51,4 +51,13 @@ export class RunObservationFormatter extends DefaultObservationFormatter {
 
     return `Command:\n\`${commandObservation.extras.command}\`\n\nOutput:\n\`\`\`\n${content.trim() || "[Command finished execution with no output]"}\n\`\`\``;
   }
+  
+  /**
+   * For run observations, we consider it successful if the exit code is 0
+   */
+  override determineSuccess(): boolean {
+    const { observation } = this.props;
+    const commandObservation = observation.payload as CommandObservation;
+    return commandObservation.extras.metadata.exit_code === 0;
+  }
 }

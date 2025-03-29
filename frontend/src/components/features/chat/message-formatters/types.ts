@@ -24,4 +24,10 @@ export interface ActionFormatter extends MessageFormatter {
 
 export interface ObservationFormatter extends MessageFormatter {
   props: ObservationFormatterProps;
+  
+  /**
+   * Determines if the observation represents a successful operation
+   * @returns true if the operation was successful, false otherwise
+   */
+  determineSuccess(): boolean;
 }

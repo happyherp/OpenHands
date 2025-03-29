@@ -120,33 +120,12 @@ export const chatSlice = createSlice({
       causeMessage.translationID = translationID;
       causeMessage.observation = observation;
 
-      // Set success property based on observation type
-      if (observationID === "run") {
-        const commandObs = observation.payload as CommandObservation;
-        causeMessage.success = commandObs.extras.metadata.exit_code === 0;
-      } else if (observationID === "run_ipython") {
-        // For IPython, we consider it successful if there's no error message
-        const ipythonObs = observation.payload as IPythonObservation;
-        causeMessage.success = !ipythonObs.content
-          .toLowerCase()
-          .includes("error:");
-      } else if (observationID === "read" || observationID === "edit") {
-        // For read/edit operations, we consider it successful if there's content and no error
-        if (observation.payload.extras.impl_source === "oh_aci") {
-          causeMessage.success =
-            observation.payload.content.length > 0 &&
-            !observation.payload.content.startsWith("ERROR:\n");
-        } else {
-          causeMessage.success =
-            observation.payload.content.length > 0 &&
-            !observation.payload.content.toLowerCase().includes("error:");
-        }
-      }
-
       // Use the formatter factory to get the appropriate formatter
-      const formatter =
-        FormatterFactory.createObservationFormatter(observation);
-      causeMessage.content = formatter._makeContent(); // Use the formatter to generate content
+      const formatter = FormatterFactory.createObservationFormatter(observation);
+      
+      // Use the formatter to determine success and generate content
+      causeMessage.success = formatter.determineSuccess();
+      causeMessage.content = formatter._makeContent();
     },
 
     addErrorMessage(

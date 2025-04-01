@@ -262,35 +262,21 @@ GET http://localhost:59281/ net::ERR_EMPTY_RESPONSE
 
 These occur because the frontend attempts to poll various hosts to check their availability.
 
-**Solution**: You can disable host polling with a feature flag:
+**Solution**: You can disable host polling by setting the `VITE_DISABLE_HOST_POLLING` environment variable:
 
-1. Open your browser console
-2. Run the following command:
-   ```js
-   localStorage.setItem('FEATURE_DISABLE_HOST_POLLING', 'true')
+1. Create a `.env.local` file in the frontend directory (or edit it if it already exists)
+2. Add the following line:
    ```
-3. Refresh the page
+   VITE_DISABLE_HOST_POLLING="true"
+   ```
+3. Restart your development server
 
-This will prevent the console errors while you're developing. To re-enable host polling:
-```js
-localStorage.removeItem('FEATURE_DISABLE_HOST_POLLING')
+This will prevent the console errors while you're developing. 
+
+Alternatively, for a temporary change without modifying files, you can run the development server with this variable set:
+
+```sh
+VITE_DISABLE_HOST_POLLING="true" npm run dev
 ```
 
-### Feature Flags
-
-The application supports various feature flags that can be used to enable/disable specific features. These flags are stored in `localStorage` and can be set through the browser console.
-
-To enable a feature flag:
-```js
-localStorage.setItem('FEATURE_FLAG_NAME', 'true')
-```
-
-To disable a feature flag:
-```js
-localStorage.setItem('FEATURE_FLAG_NAME', 'false')
-// or
-localStorage.removeItem('FEATURE_FLAG_NAME')
-```
-
-Available feature flags:
-- `DISABLE_HOST_POLLING`: Disables polling of web hosts, useful for development on Windows
+To restore normal behavior, simply remove the environment variable or set it to "false".

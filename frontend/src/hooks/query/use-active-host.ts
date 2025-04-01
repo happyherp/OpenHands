@@ -6,7 +6,6 @@ import { openHands } from "#/api/open-hands-axios";
 import { RUNTIME_INACTIVE_STATES } from "#/types/agent-state";
 import { RootState } from "#/store";
 import { useConversation } from "#/context/conversation-context";
-import { loadFeatureFlag } from "#/utils/feature-flags";
 
 // Host polling settings
 const DEFAULT_POLL_INTERVAL = 3000;
@@ -16,8 +15,8 @@ const REDUCED_POLL_INTERVAL = 10000; // Slower polling for problematic hosts
 // Store for tracking consecutive failures by host
 const failedHostsMap = new Map<string, number>();
 
-// Feature flag to disable host polling
-const isHostPollingDisabled = () => loadFeatureFlag('DISABLE_HOST_POLLING', false);
+// Check if host polling is disabled via environment variable
+const isHostPollingDisabled = () => import.meta.env.VITE_DISABLE_HOST_POLLING === "true";
 
 export const useActiveHost = () => {
   const { curAgentState } = useSelector((state: RootState) => state.agent);

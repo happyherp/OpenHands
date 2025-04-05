@@ -1,6 +1,8 @@
 name: Auto-Fix Tagged Issue with OpenHands
 
+
 on:
+  workflow_dispatch:
   workflow_call:
     inputs:
       max_iterations:

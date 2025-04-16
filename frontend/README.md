@@ -251,4 +251,32 @@ Please read the [CONTRIBUTING.md](../CONTRIBUTING.md) file for details on our co
 
 ## Troubleshooting
 
-TODO
+### Frontend Development Issues
+
+#### Fixing Console Errors on Windows
+
+When developing on Windows, you might encounter recurring network errors in the console:
+```
+GET http://localhost:59281/ net::ERR_EMPTY_RESPONSE
+```
+
+These occur because the frontend attempts to poll various hosts to check their availability.
+
+**Solution**: You can disable host polling by setting the `VITE_DISABLE_HOST_POLLING` environment variable:
+
+1. Create a `.env.local` file in the frontend directory (or edit it if it already exists)
+2. Add the following line:
+   ```
+   VITE_DISABLE_HOST_POLLING="true"
+   ```
+3. Restart your development server
+
+This will prevent the console errors while you're developing. 
+
+Alternatively, for a temporary change without modifying files, you can run the development server with this variable set:
+
+```sh
+VITE_DISABLE_HOST_POLLING="true" npm run dev
+```
+
+To restore normal behavior, simply remove the environment variable or set it to "false".

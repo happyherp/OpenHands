@@ -122,6 +122,11 @@ The core configuration options are defined in the `[core]` section of the `confi
   - Default: `true`
   - Description: Run as OpenHands
 
+- `mount_docker_socket`
+  - Type: `bool`
+  - Default: `false`
+  - Description: Whether to mount the Docker socket to enable Docker-in-Docker functionality. SECURITY WARNING: This grants container access to the host Docker daemon.
+  
 - `runtime`
   - Type: `str`
   - Default: `"docker"`

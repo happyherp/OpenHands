@@ -11,6 +11,7 @@ from openhands.core.config.condenser_config import (
     BrowserOutputCondenserConfig,
     CondenserPipelineConfig,
     LLMSummarizingCondenserConfig,
+    LLMAgentCacheCondenserConfig,
 )
 from openhands.core.logger import OpenHandsLoggerAdapter
 from openhands.core.schema import AgentState

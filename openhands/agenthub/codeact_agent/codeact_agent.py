@@ -139,28 +139,7 @@ class CodeActAgent(Agent, LLMCompletionProvider):
             f'Processing {len(condensed_history)} events from a total of {len(state.history)} events'
         )
 
-<<<<<<< HEAD
-        messages = self._get_messages(condensed_history)
-        params: dict = {
-            'messages': self.llm.format_messages_for_llm(messages),
-        }
-        params['tools'] = self.tools
-
-        if self.mcp_tools:
-            # Only add tools with unique names
-            existing_names = {tool['function']['name'] for tool in params['tools']}
-            unique_mcp_tools = [
-                tool
-                for tool in self.mcp_tools
-                if tool['function']['name'] not in existing_names
-            ]
-            params['tools'] += unique_mcp_tools
-
-        # log to litellm proxy if possible
-        params['extra_body'] = {'metadata': state.to_llm_metadata(agent_name=self.name)}
-=======
         params = self.build_llm_completion_params(condensed_history, state)
->>>>>>> 31390c720 (Add LLMAgentCacheCondenser implementation)
         response = self.llm.completion(**params)
         logger.debug(f'Response from LLM: {response}')
         actions = codeact_function_calling.response_to_actions(response)

@@ -16,6 +16,7 @@ from openhands.core.config import (
     load_from_toml,
 )
 from openhands.core.config.condenser_config import (
+    LLMAgentCacheCondenserConfig,
     LLMSummarizingCondenserConfig,
     NoOpCondenserConfig,
     RecentEventsCondenserConfig,
@@ -745,11 +746,12 @@ def test_default_condenser_behavior_enabled(default_config, temp_toml_file):
     default_config.enable_default_condenser = True
     load_from_toml(default_config, temp_toml_file)
 
-    # Verify the default agent config has LLMSummarizingCondenserConfig
+    # Verify the default agent config has LLMAgentCacheCondenserConfig
     agent_config = default_config.get_agent_config()
-    assert isinstance(agent_config.condenser, LLMSummarizingCondenserConfig)
-    assert agent_config.condenser.keep_first == 1
+    assert isinstance(agent_config.condenser, LLMAgentCacheCondenserConfig)
     assert agent_config.condenser.max_size == 100
+    assert agent_config.condenser.trigger_word == 'CONDENSE!'
+    assert agent_config.condenser.max_event_length == 10000
 
 
 def test_default_condenser_behavior_disabled(default_config, temp_toml_file):
@@ -825,24 +827,24 @@ def test_api_keys_repr_str():
             not attr_name.startswith('__')
             and attr_name not in known_key_token_attrs_llm
         ):
-            assert (
-                'key' not in attr_name.lower()
-            ), f"Unexpected attribute '{attr_name}' contains 'key' in LLMConfig"
-            assert (
-                'token' not in attr_name.lower() or 'tokens' in attr_name.lower()
-            ), f"Unexpected attribute '{attr_name}' contains 'token' in LLMConfig"
+            assert 'key' not in attr_name.lower(), (
+                f"Unexpected attribute '{attr_name}' contains 'key' in LLMConfig"
+            )
+            assert 'token' not in attr_name.lower() or 'tokens' in attr_name.lower(), (
+                f"Unexpected attribute '{attr_name}' contains 'token' in LLMConfig"
+            )
 
     # Test AgentConfig
     # No attrs in AgentConfig have 'key' or 'token' in their name
     agent_config = AgentConfig(enable_prompt_extensions=True, enable_browsing=False)
     for attr_name in AgentConfig.model_fields.keys():
         if not attr_name.startswith('__'):
-            assert (
-                'key' not in attr_name.lower()
-            ), f"Unexpected attribute '{attr_name}' contains 'key' in AgentConfig"
-            assert (
-                'token' not in attr_name.lower() or 'tokens' in attr_name.lower()
-            ), f"Unexpected attribute '{attr_name}' contains 'token' in AgentConfig"
+            assert 'key' not in attr_name.lower(), (
+                f"Unexpected attribute '{attr_name}' contains 'key' in AgentConfig"
+            )
+            assert 'token' not in attr_name.lower() or 'tokens' in attr_name.lower(), (
+                f"Unexpected attribute '{attr_name}' contains 'token' in AgentConfig"
+            )
 
     # Test AppConfig
     app_config = AppConfig(
@@ -882,12 +884,12 @@ def test_api_keys_repr_str():
             not attr_name.startswith('__')
             and attr_name not in known_key_token_attrs_app
         ):
-            assert (
-                'key' not in attr_name.lower()
-            ), f"Unexpected attribute '{attr_name}' contains 'key' in AppConfig"
-            assert (
-                'token' not in attr_name.lower() or 'tokens' in attr_name.lower()
-            ), f"Unexpected attribute '{attr_name}' contains 'token' in AppConfig"
+            assert 'key' not in attr_name.lower(), (
+                f"Unexpected attribute '{attr_name}' contains 'key' in AppConfig"
+            )
+            assert 'token' not in attr_name.lower() or 'tokens' in attr_name.lower(), (
+                f"Unexpected attribute '{attr_name}' contains 'token' in AppConfig"
+            )
 
 
 def test_max_iterations_and_max_budget_per_task_from_toml(temp_toml_file):

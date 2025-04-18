@@ -155,7 +155,7 @@ class CodeActAgent(Agent, LLMCompletionProvider):
         messages = self.llm.format_messages_for_llm(self._get_messages(events))
         tools_list = list(self.tools)  # Convert to list explicitly
         extra_body = {'metadata': state.to_llm_metadata(agent_name=self.name)}
-        
+
         # Add MCP tools if available
         if self.mcp_tools:
             # Only add tools with unique names
@@ -163,14 +163,14 @@ class CodeActAgent(Agent, LLMCompletionProvider):
             for tool in self.mcp_tools:
                 if tool['function']['name'] not in existing_names:
                     tools_list.append(tool)
-        
+
         # Build the final parameters dictionary
         params = {
             'messages': messages,
             'tools': tools_list,
             'extra_body': extra_body,
         }
-        
+
         return params
 
     def _get_messages(self, events: list[Event]) -> list[Message]:

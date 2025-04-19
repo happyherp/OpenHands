@@ -10,7 +10,6 @@ from openhands.core.config import AppConfig
 from openhands.core.config.condenser_config import (
     BrowserOutputCondenserConfig,
     CondenserPipelineConfig,
-    LLMSummarizingCondenserConfig,
     LLMAgentCacheCondenserConfig,
 )
 from openhands.core.logger import OpenHandsLoggerAdapter
@@ -139,8 +138,10 @@ class Session:
             default_condenser_config = CondenserPipelineConfig(
                 condensers=[
                     BrowserOutputCondenserConfig(),
-                    LLMSummarizingCondenserConfig(
-                        llm_config=llm.config, keep_first=4, max_size=80
+                    LLMAgentCacheCondenserConfig(
+                        max_size=100,  # Default max size
+                        trigger_word='CONDENSE!',  # Default trigger word
+                        max_event_length=10_000,  # Default max event length
                     ),
                 ]
             )

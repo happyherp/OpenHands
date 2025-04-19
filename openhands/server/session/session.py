@@ -141,7 +141,6 @@ class Session:
                     LLMAgentCacheCondenserConfig(
                         max_size=100,  # Default max size
                         trigger_word='CONDENSE!',  # Default trigger word
-                        max_event_length=10_000,  # Default max event length
                     ),
                 ]
             )

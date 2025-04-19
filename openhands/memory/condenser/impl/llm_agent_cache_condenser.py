@@ -9,7 +9,6 @@ from openhands.core.message import Message, TextContent
 from openhands.core.schema.action import ActionType
 from openhands.events.action.agent import CondensationAction
 from openhands.events.event import Event, EventSource
-from openhands.events.observation.agent import AgentCondensationObservation
 from openhands.memory.condenser.condenser import Condensation, View
 from openhands.memory.condenser.impl.caching_condenser import CachingCondenser
 
@@ -98,33 +97,10 @@ CURRENT_STATE: Last flip: Heads, Haiku count: 15/20"""
     def processResponse(
         self, events: List[Event], state: State, response: Any, messages: List[Message]
     ) -> Union[Condensation, View]:
-        """Process the LLM response to create a Condensation.
-        This method is required by the CachingCondenser abstract base class.
-        Args:
-            events: The events that were condensed
-            state: The current state
-            response: The LLM response
-            messages: The messages that were in the prompt
-        Returns:
-            A Condensation or View object
-        """
         # Extract the summary from the response
         summary = response.choices[0].message.content
 
-        # Log the response for debugging
-        self.add_metadata('response', response.model_dump())
-
-        # Identify events to be forgotten
-        # We'll keep approximately 25% of the most recent events
-        events_to_keep = min(20, len(events) // 4)
-        events_to_forget = events[:-events_to_keep] if events_to_keep > 0 else []
-
-        # Filter out any condensation events from the list of events to forget
-        events_to_forget = [
-            event
-            for event in events_to_forget
-            if not isinstance(event, AgentCondensationObservation)
-        ]
+        events_to_forget = events[:]
 
         # Make sure we're not forgetting all user messages
         user_events = [

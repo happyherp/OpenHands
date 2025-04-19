@@ -751,7 +751,6 @@ def test_default_condenser_behavior_enabled(default_config, temp_toml_file):
     assert isinstance(agent_config.condenser, LLMAgentCacheCondenserConfig)
     assert agent_config.condenser.max_size == 100
     assert agent_config.condenser.trigger_word == 'CONDENSE!'
-    assert agent_config.condenser.max_event_length == 10000
 
 
 def test_default_condenser_behavior_disabled(default_config, temp_toml_file):

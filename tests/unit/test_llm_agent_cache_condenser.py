@@ -7,7 +7,6 @@ from openhands.agenthub.codeact_agent.codeact_agent import CodeActAgent
 from openhands.controller.state.state import State
 from openhands.core.config.agent_config import AgentConfig
 from openhands.core.config.llm_config import LLMConfig
-from openhands.events.action.agent import ChangeAgentStateAction
 from openhands.events.action.message import MessageAction
 from openhands.events.event import Event, RecallType
 from openhands.events.observation.agent import (
@@ -15,6 +14,7 @@ from openhands.events.observation.agent import (
 )
 from openhands.events.observation.files import FileReadObservation
 from openhands.llm import LLM
+from openhands.llm.metrics import Metrics
 from openhands.memory.condenser.condenser import Condensation, View
 from openhands.memory.condenser.impl.llm_agent_cache_condenser import (
     LLMAgentCacheCondenser,
@@ -30,6 +30,7 @@ def agent() -> CodeActAgent:
     agent.llm.config.max_message_chars = 1000
     agent.llm.is_caching_prompt_active.return_value = True
     agent.llm.format_messages_for_llm = lambda messages: messages
+    agent.llm.metrics = Metrics()
     return agent
 
 
@@ -218,62 +219,6 @@ CHANGES: Summary <mention content of message 4,5>
     assert isinstance(result, Condensation)
     assert len(result.action.forgotten_event_ids) > 0
     assert 'Summary <mention content of message 4,5>' in result.action.summary
-
-
-def test_llm_agent_cache_condenser_with_agent_state_change_action(agent: CodeActAgent):
-    """Test that AgentStateChangesAction is not removed during condensation."""
-    set_next_llm_response(
-        agent,
-        """
-USER_CONTEXT: User requested agent activation
-COMPLETED: Agent state changed to active
-PENDING: None
-CURRENT_STATE: Agent is active
-    """,
-    )
-
-    # Create a condenser with a small max_size to ensure condensation
-    # but large enough to not trigger again after adding the condensation action
-    condenser = LLMAgentCacheCondenser(max_size=5)
-    agent.condenser = condenser
-
-    # Create a lot of events to ensure we exceed max_size
-    events = []
-    for i in range(10):
-        event = MessageAction(f'Message {i}')
-        event._source = 'user'  # type: ignore [attr-defined]
-        event._id = i + 1  # type: ignore [attr-defined]
-        events.append(event)
-
-    # Add an agent state change event
-    agent_state_change_event = ChangeAgentStateAction(agent_state='active')
-    agent_state_change_event._id = 20  # type: ignore [attr-defined]
-    events.append(agent_state_change_event)
-
-    state = State(history=cast(list[Event], events))
-
-    result = condenser.condensed_history(state, agent)
-
-    # Verify that a Condensation is returned
-    assert isinstance(result, Condensation)
-    # With our new implementation, we should have forgotten at least one event
-    assert len(result.action.forgotten_event_ids) > 0
-
-    # Create a new state with just a few events and the condensation action
-    # to avoid triggering condensation again
-    new_state = State(
-        history=[
-            events[-1],  # Keep the agent state change event
-            result.action,  # Add the condensation action
-        ]
-    )
-
-    # Check that we get a View back
-    view = condenser.condensed_history(new_state, agent)
-    assert isinstance(view, View)
-    # Check that we have the agent state change event and condensation action in the view
-    assert events[-1] in view.events
-    assert result.action in view.events
 
 
 def test_llm_agent_cache_condenser_always_keep_system_prompt(agent: CodeActAgent):

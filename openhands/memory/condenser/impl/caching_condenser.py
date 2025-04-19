@@ -90,6 +90,7 @@ class CachingCondenser(Condenser, ABC):
         # Get the LLM response
         response = agent.llm.completion(**params)
         self.add_metadata('response', response.model_dump())
+        self.add_metadata('metrics', agent.llm.metrics.get())
 
         # Process the response
         return self.processResponse(events, state, response, base_messages)

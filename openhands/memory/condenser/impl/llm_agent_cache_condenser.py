@@ -10,7 +10,6 @@ from openhands.core.schema.action import ActionType
 from openhands.events.action.agent import CondensationAction
 from openhands.events.event import Event, EventSource
 from openhands.events.observation.agent import AgentCondensationObservation
-from openhands.events.serialization.event import truncate_content
 from openhands.memory.condenser.condenser import Condensation, View
 from openhands.memory.condenser.impl.caching_condenser import CachingCondenser
 
@@ -22,7 +21,6 @@ class LLMAgentCacheCondenser(CachingCondenser):
         self,
         max_size: int = 100,
         trigger_word: str = 'CONDENSE!',
-        max_event_length: int = 10_000,
     ):
         """Initialize the condenser.
         Args:
@@ -32,12 +30,7 @@ class LLMAgentCacheCondenser(CachingCondenser):
         """
         self.max_size = max_size
         self.trigger_word = trigger_word
-        self.max_event_length = max_event_length
         super().__init__()
-
-    def _truncate(self, content: str) -> str:
-        """Truncate the content to fit within the specified maximum event length."""
-        return truncate_content(content, max_chars=self.max_event_length)
 
     def createCondensationPrompt(
         self, events: List[Event], state: State, base_messages: List[Message]
@@ -51,15 +44,9 @@ class LLMAgentCacheCondenser(CachingCondenser):
         Returns:
             The message with condensation instructions
         """
-        # Find the most recent condensation event if it exists
-        summary_event = None
-        for event in reversed(events):
-            if isinstance(event, AgentCondensationObservation):
-                summary_event = event
-                break
-
         # Create the condensation instructions similar to LLMSummarizingCondenser
-        prompt = """You are maintaining a context-aware state summary for an interactive agent. You will be given a list of events corresponding to actions taken by the agent, and the most recent previous summary if one exists. Track:
+        prompt = """You are maintaining a context-aware state summary for an interactive agent. 
+The whole conversation above will be removed from the context window. Therefore you need to track:
 
 USER_CONTEXT: (Preserve essential user requirements, goals, and clarifications in concise form)
 
@@ -101,34 +88,6 @@ PENDING: 5 more haikus needed
 CURRENT_STATE: Last flip: Heads, Haiku count: 15/20"""
 
         prompt += '\n\n'
-
-        # Add the previous summary if it exists
-        if (
-            summary_event
-            and hasattr(summary_event, 'message')
-            and summary_event.message
-        ):
-            summary_event_content = self._truncate(summary_event.message)
-            prompt += (
-                f'<PREVIOUS SUMMARY>\n{summary_event_content}\n</PREVIOUS SUMMARY>\n\n'
-            )
-
-        # Add events to be summarized
-        # We'll identify events that should be summarized - these are events that aren't
-        # part of the most recent conversation (we'll keep the last few events)
-        events_to_keep = min(
-            20, len(events) // 4
-        )  # Keep approximately 25% of recent events
-        events_to_summarize = events[:-events_to_keep] if events_to_keep > 0 else events
-
-        for event in events_to_summarize:
-            if not isinstance(
-                event, AgentCondensationObservation
-            ):  # Don't summarize previous summaries
-                event_content = self._truncate(str(event))
-                prompt += f'<EVENT id={event.id}>\n{event_content}\n</EVENT>\n'
-
-        prompt += '\nNow summarize the events using the rules above.'
 
         # Create a message with the condensation instructions
         return Message(
@@ -253,7 +212,6 @@ CURRENT_STATE: Last flip: Heads, Haiku count: 15/20"""
         return LLMAgentCacheCondenser(
             max_size=config.max_size,
             trigger_word=config.trigger_word,
-            max_event_length=config.max_event_length,
         )
 
 

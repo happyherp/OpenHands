@@ -52,15 +52,15 @@ def check_dependencies(code_repo_path: str, poetry_venvs_path: str):
         )
     # Check jupyter is installed
     logger.debug('Checking dependencies: Jupyter')
-    output = subprocess.check_output(
-        'poetry run jupyter --version',
-        shell=True,
-        text=True,
-        cwd=code_repo_path,
-    )
-    logger.debug(f'Jupyter output: {output}')
-    if 'jupyter' not in output.lower():
-        raise ValueError('Jupyter is not properly installed. ' + ERROR_MESSAGE)
+    # output = subprocess.check_output(
+    #     'poetry run jupyter --version',
+    #     shell=True,
+    #     text=True,
+    #     cwd=code_repo_path,
+    # )
+    # logger.debug(f'Jupyter output: {output}')
+    # if 'jupyter' not in output.lower():
+    #     raise ValueError('Jupyter is not properly installed. ' + ERROR_MESSAGE)
 
     # Check libtmux is installed
     logger.debug('Checking dependencies: libtmux')
@@ -76,11 +76,11 @@ def check_dependencies(code_repo_path: str, poetry_venvs_path: str):
         raise ValueError('libtmux is not properly installed. ' + ERROR_MESSAGE)
 
     # Check browser works
-    logger.debug('Checking dependencies: browser')
-    from openhands.runtime.browser.browser_env import BrowserEnv
+    # logger.debug('Checking dependencies: browser')
+    # from openhands.runtime.browser.browser_env import BrowserEnv
 
-    browser = BrowserEnv()
-    browser.close()
+    # browser = BrowserEnv()
+    # browser.close()
 
 
 class LocalRuntime(ActionExecutionClient):

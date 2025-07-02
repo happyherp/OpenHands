@@ -278,7 +278,7 @@ class DockerRuntimeBuilder(RuntimeBuilder):
 
                 layers: dict[str, dict[str, str]] = {}
                 previous_layer_count = 0
-                last_progress_time = 0
+                last_progress_time = 0.0
                 
                 # Emit initial pull start event
                 if self.status_callback:

@@ -19,11 +19,13 @@ async def run_agent_until_done(
     Note that runtime must be connected before being passed in here.
     """
 
-    def status_callback(msg_type: str, msg_id: str, msg: str) -> None:
+    def status_callback(msg_type: str, msg_id: str, msg: str | dict) -> None:
         if msg_type == 'error':
             logger.error(msg)
             if controller:
-                controller.state.last_error = msg
+                # Convert dict to string for last_error field
+                error_msg = str(msg) if isinstance(msg, dict) else msg
+                controller.state.last_error = error_msg
                 asyncio.create_task(controller.set_agent_state_to(AgentState.ERROR))
         else:
             logger.info(msg)

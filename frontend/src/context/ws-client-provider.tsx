@@ -1,6 +1,7 @@
 import React from "react";
 import { io, Socket } from "socket.io-client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import EventLogger from "#/utils/event-logger";
 import { handleAssistantMessage } from "#/services/actions";
 import { showChatError, trackError } from "#/utils/error-handler";
@@ -28,6 +29,11 @@ import {
 } from "#/types/core/guards";
 import { useOptimisticUserMessage } from "#/hooks/use-optimistic-user-message";
 import { useWSErrorMessage } from "#/hooks/use-ws-error-message";
+import {
+  displayRuntimePullProgress,
+  displayRuntimePullError,
+  displayRuntimePullComplete,
+} from "#/utils/custom-toast-handlers";
 
 export type WebSocketStatus = "CONNECTING" | "CONNECTED" | "DISCONNECTED";
 
@@ -133,6 +139,7 @@ export function WsClientProvider({
 }: React.PropsWithChildren<WsClientProviderProps>) {
   const { removeOptimisticUserMessage } = useOptimisticUserMessage();
   const { setErrorMessage, removeErrorMessage } = useWSErrorMessage();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const sioRef = React.useRef<Socket | null>(null);
   const [webSocketStatus, setWebSocketStatus] =
@@ -252,6 +259,46 @@ export function WsClientProvider({
     setEvents((prevEvents) => [...prevEvents, event]);
     if (!Number.isNaN(parseInt(event.id as string, 10))) {
       lastEventRef.current = event;
+    }
+
+    // Handle runtime pull events
+    if (event.runtime_pull_event) {
+      const { id, data } = event;
+
+      switch (id) {
+        case "runtime_pull_start":
+          // Initial pull start - data is a string message
+          displayRuntimePullProgress(0, data as string);
+          break;
+
+        case "runtime_pull_progress":
+          // Progress update - data is an object with progress info
+          if (typeof data === "object" && data !== null) {
+            const progressData = data as {
+              overall_pct: number;
+              message: string;
+            };
+            displayRuntimePullProgress(
+              progressData.overall_pct,
+              progressData.message,
+            );
+          }
+          break;
+
+        case "runtime_pull_complete":
+          // Pull completed successfully
+          displayRuntimePullComplete(t);
+          break;
+
+        case "runtime_pull_failed":
+          // Pull failed - data is error message
+          displayRuntimePullError(data as string);
+          break;
+
+        default:
+          // Unknown runtime pull event type
+          break;
+      }
     }
   }
 

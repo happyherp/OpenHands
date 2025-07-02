@@ -121,7 +121,7 @@ class DockerRuntime(ActionExecutionClient):
         self.container: Container | None = None
         self.main_module = main_module
 
-        self.runtime_builder = DockerRuntimeBuilder(self.docker_client)
+        self.runtime_builder = DockerRuntimeBuilder(self.docker_client, self.status_callback)
 
         # Buffer for container logs
         self.log_streamer: LogStreamer | None = None

@@ -404,7 +404,7 @@ if __name__ == '__main__':
             # then obtain the MD5 hash of the folder and return <image_repo>:<temp_dir_md5_hash>
             runtime_image_hash_name = build_runtime_image(
                 args.base_image,
-                runtime_builder=DockerRuntimeBuilder(docker.from_env()),
+                runtime_builder=DockerRuntimeBuilder(docker.from_env(), None),
                 build_folder=temp_dir,
                 dry_run=True,
                 force_rebuild=args.force_rebuild,
@@ -442,7 +442,7 @@ if __name__ == '__main__':
         # If a build_folder is not provided, after copying the required source code and dynamically creating the
         # Dockerfile, we actually build the Docker image
         logger.debug('Building image in a temporary folder')
-        docker_builder = DockerRuntimeBuilder(docker.from_env())
+        docker_builder = DockerRuntimeBuilder(docker.from_env(), None)
         image_name = build_runtime_image(
             args.base_image, docker_builder, platform=args.platform
         )

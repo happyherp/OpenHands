@@ -113,7 +113,7 @@ class Runtime(FileEditRuntimeMixin):
     config: OpenHandsConfig
     initial_env_vars: dict[str, str]
     attach_to_existing: bool
-    status_callback: Callable[[str, str, str], None] | None
+    status_callback: Callable[[str, str, str | dict], None] | None
     runtime_status: RuntimeStatus | None
     _runtime_initialized: bool = False
 
@@ -124,7 +124,7 @@ class Runtime(FileEditRuntimeMixin):
         sid: str = 'default',
         plugins: list[PluginRequirement] | None = None,
         env_vars: dict[str, str] | None = None,
-        status_callback: Callable[[str, str, str], None] | None = None,
+        status_callback: Callable[[str, str, str | dict], None] | None = None,
         attach_to_existing: bool = False,
         headless_mode: bool = False,
         user_id: str | None = None,

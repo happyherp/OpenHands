@@ -79,8 +79,6 @@ docker run -it --rm --pull=always \
 
 You'll find OpenHands running at [http://localhost:3000](http://localhost:3000)!
 
-> **First-time startup**: When running OpenHands for the first time, you'll see a progress indicator while the sandbox runtime image (~3GB) is downloaded. This may take a few minutes depending on your internet connection. The progress bar shows real-time download status and will automatically disappear when complete.
-
 When you open the application, you'll be asked to choose an LLM provider and add an API key.
 [Anthropic's Claude Sonnet 4](https://www.anthropic.com/api) (`anthropic/claude-sonnet-4-20250514`)
 works best, but you have [many options](https://docs.all-hands.dev/usage/llms).

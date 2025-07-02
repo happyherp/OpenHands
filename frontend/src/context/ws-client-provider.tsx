@@ -263,42 +263,46 @@ export function WsClientProvider({
 
     // Handle runtime pull events
     if (event.runtime_pull_event) {
-      const { id, data } = event;
+      handleRuntimePullEvent(event, t);
+    }
+  }
 
-      switch (id) {
-        case "runtime_pull_start":
-          // Initial pull start - data is a string message
-          displayRuntimePullProgress(0, data as string);
-          break;
+  function handleRuntimePullEvent(event: Record<string, unknown>, t: (key: string) => string) {
+    const { id, data } = event;
 
-        case "runtime_pull_progress":
-          // Progress update - data is an object with progress info
-          if (typeof data === "object" && data !== null) {
-            const progressData = data as {
-              overall_pct: number;
-              message: string;
-            };
-            displayRuntimePullProgress(
-              progressData.overall_pct,
-              progressData.message,
-            );
-          }
-          break;
+    switch (id) {
+      case "runtime_pull_start":
+        // Initial pull start - data is a string message
+        displayRuntimePullProgress(0, data as string);
+        break;
 
-        case "runtime_pull_complete":
-          // Pull completed successfully
-          displayRuntimePullComplete(t);
-          break;
+      case "runtime_pull_progress":
+        // Progress update - data is an object with progress info
+        if (typeof data === "object" && data !== null) {
+          const progressData = data as {
+            overall_pct: number;
+            message: string;
+          };
+          displayRuntimePullProgress(
+            progressData.overall_pct,
+            progressData.message,
+          );
+        }
+        break;
 
-        case "runtime_pull_failed":
-          // Pull failed - data is error message
-          displayRuntimePullError(data as string);
-          break;
+      case "runtime_pull_complete":
+        // Pull completed successfully
+        displayRuntimePullComplete(t);
+        break;
 
-        default:
-          // Unknown runtime pull event type
-          break;
-      }
+      case "runtime_pull_failed":
+        // Pull failed - data is error message
+        displayRuntimePullError(data as string);
+        break;
+
+      default:
+        // Unknown runtime pull event type
+        break;
     }
   }
 

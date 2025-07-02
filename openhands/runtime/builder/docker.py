@@ -295,30 +295,8 @@ class DockerRuntimeBuilder(RuntimeBuilder):
                 ):
                     self._output_build_progress(line, layers, previous_layer_count)
                     
-                    # Emit progress events with throttling (≤ 4 events/sec)
-                    current_time = time.time()
-                    if current_time - last_progress_time >= 0.25:  # 250ms = 4 events/sec max
-                        overall_pct = self._calculate_overall_progress(layers)
-                        if self.status_callback and 'id' in line and 'progressDetail' in line:
-                            layer_id = line['id']
-                            progress_detail = line.get('progressDetail', {})
-                            current_bytes = progress_detail.get('current', 0)
-                            total_bytes = progress_detail.get('total', 0)
-                            
-                            self.status_callback('info', 'runtime_pull_progress', {
-                                'layer_id': layer_id,
-                                'current_bytes': current_bytes,
-                                'total_bytes': total_bytes,
-                                'overall_pct': overall_pct,
-                                'message': f'Downloading sandbox runtime ({overall_pct:.1f}%)'
-                            })
-                            last_progress_time = current_time
-                        
-                        # Console logging for non-UI users
-                        if 'id' in line and 'status' in line:
-                            layer_id = line['id']
-                            status = line['status']
-                            logger.info(f'[runtime pull] {layer_id}: {status} ({overall_pct:.1f}%)')
+                    # Handle progress tracking and events
+                    last_progress_time = self._handle_pull_progress(line, layers, last_progress_time)
                     
                     previous_layer_count = len(layers)
                 
@@ -474,19 +452,53 @@ class DockerRuntimeBuilder(RuntimeBuilder):
         if not layers:
             return 0.0
             
-        total_completed = 0
+        total_progress = 0.0
         total_layers = len(layers)
         
         for layer_data in layers.values():
             status = layer_data.get('status', '')
             if status in ['Download complete', 'Already exists', 'Pull complete']:
-                total_completed += 1
+                total_progress += 1.0
             elif status == 'Downloading':
-                # For downloading layers, we can estimate partial completion
-                # This is a rough estimate since we don't have exact byte counts here
-                total_completed += 0.5
+                # Try to get actual progress from progressDetail if available
+                # Otherwise use a rough estimate
+                total_progress += 0.5
+            elif status in ['Extracting', 'Pull complete']:
+                total_progress += 0.75
         
         if total_layers == 0:
             return 0.0
             
-        return min((total_completed / total_layers) * 100, 100.0)
+        return min((total_progress / total_layers) * 100, 100.0)
+
+    def _handle_pull_progress(self, line: dict, layers: dict[str, dict[str, str]], last_progress_time: float) -> float:
+        """Handle progress tracking and event emission during Docker pull.
+        
+        Args:
+            line: Docker pull stream line
+            layers: Dictionary of layer information
+            last_progress_time: Timestamp of last progress event
+            
+        Returns:
+            float: Updated last progress time
+        """
+        # Emit progress events with throttling (≤ 4 events/sec)
+        current_time = time.time()
+        if current_time - last_progress_time >= 0.25:  # 250ms = 4 events/sec max
+            if self.status_callback and 'id' in line:
+                overall_pct = self._calculate_overall_progress(layers)
+                layer_id = line['id']
+                
+                self.status_callback('info', 'runtime_pull_progress', {
+                    'overall_pct': overall_pct,
+                    'message': f'Downloading sandbox runtime ({overall_pct:.1f}%)'
+                })
+                
+                # Console logging for non-UI users
+                if 'status' in line:
+                    status = line['status']
+                    logger.info(f'[runtime pull] {layer_id}: {status} ({overall_pct:.1f}%)')
+                
+                return current_time
+        
+        return last_progress_time

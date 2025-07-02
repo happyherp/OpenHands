@@ -337,22 +337,33 @@ class Session:
         """Sends an error message to the client."""
         await self.send({'error': True, 'message': message})
 
-    async def _send_status_message(self, msg_type: str, id: str, message: str) -> None:
+    async def _send_status_message(self, msg_type: str, id: str, message: str | dict) -> None:
         """Sends a status message to the client."""
         if msg_type == 'error':
             agent_session = self.agent_session
             controller = self.agent_session.controller
             if controller is not None and not agent_session.is_closed():
                 await controller.set_agent_state_to(AgentState.ERROR)
+            error_msg = message if isinstance(message, str) else str(message)
             self.logger.error(
-                f'Agent status error: {message}',
+                f'Agent status error: {error_msg}',
                 extra={'signal': 'agent_status_error'},
             )
-        await self.send(
-            {'status_update': True, 'type': msg_type, 'id': id, 'message': message}
-        )
+        
+        # Handle special runtime pull events
+        if id in ['runtime_pull_progress', 'runtime_pull_failed', 'runtime_pull_start', 'runtime_pull_complete']:
+            await self.send({
+                'runtime_pull_event': True,
+                'type': msg_type,
+                'id': id,
+                'data': message
+            })
+        else:
+            await self.send(
+                {'status_update': True, 'type': msg_type, 'id': id, 'message': message}
+            )
 
-    def queue_status_message(self, msg_type: str, id: str, message: str) -> None:
+    def queue_status_message(self, msg_type: str, id: str, message: str | dict) -> None:
         """Queues a status message to be sent asynchronously."""
         asyncio.run_coroutine_threadsafe(
             self._send_status_message(msg_type, id, message), self.loop

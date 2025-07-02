@@ -10126,5 +10126,37 @@
         "tr": "Gizli anahtarları yönetmek için bir Git sağlayıcısına bağlan",
         "de": "Git-Anbieter verbinden, um Geheimnisse zu verwalten",
         "uk": "Підключити провайдера Git для управління секретами"
+    },
+    "RUNTIME$PULL_FIRST_TIME_INFO": {
+        "en": "This may take a few minutes on first run (~3GB download)",
+        "ja": "初回実行時は数分かかる場合があります（約3GBのダウンロード）",
+        "zh-CN": "首次运行可能需要几分钟（约3GB下载）",
+        "zh-TW": "首次運行可能需要幾分鐘（約3GB下載）",
+        "ko-KR": "첫 실행 시 몇 분이 소요될 수 있습니다 (~3GB 다운로드)",
+        "no": "Dette kan ta noen minutter ved første kjøring (~3GB nedlasting)",
+        "it": "Potrebbe richiedere alcuni minuti alla prima esecuzione (~3GB di download)",
+        "pt": "Pode levar alguns minutos na primeira execução (~3GB de download)",
+        "es": "Puede tomar unos minutos en la primera ejecución (~3GB de descarga)",
+        "ar": "قد يستغرق هذا بضع دقائق في التشغيل الأول (~3 جيجابايت تحميل)",
+        "fr": "Cela peut prendre quelques minutes lors de la première exécution (~3GB de téléchargement)",
+        "tr": "İlk çalıştırmada birkaç dakika sürebilir (~3GB indirme)",
+        "de": "Dies kann beim ersten Ausführen einige Minuten dauern (~3GB Download)",
+        "uk": "Це може зайняти кілька хвилин при першому запуску (~3ГБ завантаження)"
+    },
+    "RUNTIME$PULL_COMPLETE": {
+        "en": "Sandbox runtime ready!",
+        "ja": "サンドボックスランタイムの準備完了！",
+        "zh-CN": "沙盒运行时已就绪！",
+        "zh-TW": "沙盒運行時已就緒！",
+        "ko-KR": "샌드박스 런타임 준비 완료!",
+        "no": "Sandkasse-runtime klar!",
+        "it": "Runtime sandbox pronto!",
+        "pt": "Runtime do sandbox pronto!",
+        "es": "¡Runtime del sandbox listo!",
+        "ar": "بيئة التشغيل المعزولة جاهزة!",
+        "fr": "Runtime sandbox prêt !",
+        "tr": "Sandbox çalışma zamanı hazır!",
+        "de": "Sandbox-Runtime bereit!",
+        "uk": "Середовище виконання пісочниці готове!"
     }
 }

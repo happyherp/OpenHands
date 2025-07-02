@@ -2,6 +2,7 @@ import datetime
 import os
 import subprocess
 import time
+from typing import Callable
 
 import docker
 
@@ -14,8 +15,9 @@ from openhands.utils.term_color import TermColor, colorize
 
 
 class DockerRuntimeBuilder(RuntimeBuilder):
-    def __init__(self, docker_client: docker.DockerClient):
+    def __init__(self, docker_client: docker.DockerClient, status_callback: Callable[[str, str, str | dict], None] | None = None):
         self.docker_client = docker_client
+        self.status_callback = status_callback
 
         version_info = self.docker_client.version()
         server_version = version_info.get('Version', '').replace('-', '.')
@@ -276,6 +278,11 @@ class DockerRuntimeBuilder(RuntimeBuilder):
 
                 layers: dict[str, dict[str, str]] = {}
                 previous_layer_count = 0
+                last_progress_time = 0.0
+                
+                # Emit initial pull start event
+                if self.status_callback:
+                    self.status_callback('info', 'runtime_pull_start', f'Downloading sandbox runtime ({image_name}) - first run can take a few minutes...')
 
                 if ':' in image_name:
                     image_repo, image_tag = image_name.split(':', 1)
@@ -287,20 +294,36 @@ class DockerRuntimeBuilder(RuntimeBuilder):
                     image_repo, tag=image_tag, stream=True, decode=True
                 ):
                     self._output_build_progress(line, layers, previous_layer_count)
+                    
+                    # Handle progress tracking and events
+                    last_progress_time = self._handle_pull_progress(line, layers, last_progress_time)
+                    
                     previous_layer_count = len(layers)
+                
+                # Emit completion event
+                if self.status_callback:
+                    self.status_callback('info', 'runtime_pull_complete', 'Sandbox runtime download complete')
+                
                 logger.debug('Image pulled')
                 return True
             except docker.errors.ImageNotFound:
-                logger.debug('Could not find image locally or in registry.')
+                error_msg = 'Image not found in registry'
+                logger.debug(f'Could not find image locally or in registry: {image_name}')
+                if self.status_callback:
+                    self.status_callback('error', 'runtime_pull_failed', error_msg)
                 return False
             except Exception as e:
-                msg = f'Image {colorize("could not be pulled", TermColor.ERROR)}: '
                 ex_msg = str(e)
                 if 'Not Found' in ex_msg:
-                    msg += 'image not found in registry.'
+                    error_msg = 'Image not found in registry'
                 else:
-                    msg += f'{ex_msg}'
+                    error_msg = f'Download failed - check network/registry access: {ex_msg}'
+                
+                msg = f'Image {colorize("could not be pulled", TermColor.ERROR)}: {error_msg}'
                 logger.debug(msg)
+                
+                if self.status_callback:
+                    self.status_callback('error', 'runtime_pull_failed', error_msg)
                 return False
 
     def _output_logs(self, new_line: str) -> None:
@@ -416,3 +439,66 @@ class DockerRuntimeBuilder(RuntimeBuilder):
 
         logger.debug(f'Cache directory {cache_dir} is usable')
         return True
+
+    def _calculate_overall_progress(self, layers: dict[str, dict[str, str]]) -> float:
+        """Calculate overall progress percentage across all layers.
+        
+        Args:
+            layers: Dictionary of layer information with progress details
+            
+        Returns:
+            float: Overall progress percentage (0-100)
+        """
+        if not layers:
+            return 0.0
+            
+        total_progress = 0.0
+        total_layers = len(layers)
+        
+        for layer_data in layers.values():
+            status = layer_data.get('status', '')
+            if status in ['Download complete', 'Already exists', 'Pull complete']:
+                total_progress += 1.0
+            elif status == 'Downloading':
+                # Try to get actual progress from progressDetail if available
+                # Otherwise use a rough estimate
+                total_progress += 0.5
+            elif status in ['Extracting', 'Pull complete']:
+                total_progress += 0.75
+        
+        if total_layers == 0:
+            return 0.0
+            
+        return min((total_progress / total_layers) * 100, 100.0)
+
+    def _handle_pull_progress(self, line: dict, layers: dict[str, dict[str, str]], last_progress_time: float) -> float:
+        """Handle progress tracking and event emission during Docker pull.
+        
+        Args:
+            line: Docker pull stream line
+            layers: Dictionary of layer information
+            last_progress_time: Timestamp of last progress event
+            
+        Returns:
+            float: Updated last progress time
+        """
+        # Emit progress events with throttling (≤ 4 events/sec)
+        current_time = time.time()
+        if current_time - last_progress_time >= 0.25:  # 250ms = 4 events/sec max
+            if self.status_callback and 'id' in line:
+                overall_pct = self._calculate_overall_progress(layers)
+                layer_id = line['id']
+                
+                self.status_callback('info', 'runtime_pull_progress', {
+                    'overall_pct': overall_pct,
+                    'message': f'Downloading sandbox runtime ({overall_pct:.1f}%)'
+                })
+                
+                # Console logging for non-UI users
+                if 'status' in line:
+                    status = line['status']
+                    logger.info(f'[runtime pull] {layer_id}: {status} ({overall_pct:.1f}%)')
+                
+                return current_time
+        
+        return last_progress_time

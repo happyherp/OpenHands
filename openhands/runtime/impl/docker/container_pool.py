@@ -21,6 +21,13 @@ from openhands.runtime.plugins import PluginRequirement
 from openhands.runtime.utils.runtime_build import build_runtime_image
 from openhands.runtime.builder import DockerRuntimeBuilder
 
+from openhands.runtime.impl.docker.constants import (
+    EXECUTION_SERVER_PORT_RANGE,
+    VSCODE_PORT_RANGE,
+    APP_PORT_RANGE_1,
+    APP_PORT_RANGE_2,
+)
+
 
 @dataclass
 class PooledContainer:
@@ -53,12 +60,6 @@ class ContainerPool:
         self._pool_lock = asyncio.Lock()
         self._maintenance_task: Optional[asyncio.Task] = None
         self._shutdown = False
-        
-        # Port ranges (same as in docker_runtime.py)
-        self.EXECUTION_SERVER_PORT_RANGE = (30000, 39999)
-        self.VSCODE_PORT_RANGE = (40000, 49999)
-        self.APP_PORT_RANGE_1 = (50000, 54999)
-        self.APP_PORT_RANGE_2 = (55000, 59999)
         
     async def start(self) -> None:
         """Start the container pool."""
@@ -167,11 +168,11 @@ class ContainerPool:
             container_name = f"openhands-pool-{container_id}"
             
             # Find available ports
-            container_port = self._find_available_port(self.EXECUTION_SERVER_PORT_RANGE)
-            vscode_port = self._find_available_port(self.VSCODE_PORT_RANGE)
+            container_port = self._find_available_port(EXECUTION_SERVER_PORT_RANGE)
+            vscode_port = self._find_available_port(VSCODE_PORT_RANGE)
             app_ports = [
-                self._find_available_port(self.APP_PORT_RANGE_1),
-                self._find_available_port(self.APP_PORT_RANGE_2),
+                self._find_available_port(APP_PORT_RANGE_1),
+                self._find_available_port(APP_PORT_RANGE_2),
             ]
             
             # Build runtime image if needed

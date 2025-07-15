@@ -37,12 +37,13 @@ from openhands.utils.async_utils import call_sync_from_async
 from openhands.utils.shutdown_listener import add_shutdown_listener
 from openhands.utils.tenacity_stop import stop_if_should_exit
 
-CONTAINER_NAME_PREFIX = 'openhands-runtime-'
-
-EXECUTION_SERVER_PORT_RANGE = (30000, 39999)
-VSCODE_PORT_RANGE = (40000, 49999)
-APP_PORT_RANGE_1 = (50000, 54999)
-APP_PORT_RANGE_2 = (55000, 59999)
+from openhands.runtime.impl.docker.constants import (
+    CONTAINER_NAME_PREFIX,
+    EXECUTION_SERVER_PORT_RANGE,
+    VSCODE_PORT_RANGE,
+    APP_PORT_RANGE_1,
+    APP_PORT_RANGE_2,
+)
 
 
 def _is_retryablewait_until_alive_error(exception: Exception) -> bool:

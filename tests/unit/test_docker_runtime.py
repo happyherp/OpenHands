@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
@@ -165,3 +165,54 @@ def test_volumes_default_mode():
 
     # Assert that the mode remains 'rw' (default)
     assert volumes[os.path.abspath('/host/path')]['mode'] == 'rw'
+
+
+# Container Pool Tests
+
+@pytest.fixture
+def config_with_pool():
+    config = OpenHandsConfig()
+    config.sandbox.keep_runtime_alive = False
+    config.sandbox.container_pool_size = 2
+    return config
+
+
+def test_container_pool_integration_with_docker_runtime():
+    """Test that container pool integrates properly with DockerRuntime."""
+    # Test that the container pool is properly imported and available
+    from openhands.runtime.impl.docker.container_pool import ContainerPool
+    from openhands.runtime.impl.docker.docker_runtime import DockerRuntime
+    
+    # Test that DockerRuntime has the necessary class variables
+    assert hasattr(DockerRuntime, '_container_pool')
+    
+    # Test that the methods exist
+    assert hasattr(DockerRuntime, '_ensure_container_pool')
+    assert callable(getattr(DockerRuntime, '_ensure_container_pool'))
+    assert hasattr(DockerRuntime, '_shutdown_container_pool')
+    assert callable(getattr(DockerRuntime, '_shutdown_container_pool'))
+
+
+@patch('openhands.runtime.impl.docker.container_pool.ContainerPool')
+def test_container_pool_disabled_when_size_zero(mock_container_pool_class, config):
+    """Test that container pool is not created when pool size is 0."""
+    # Arrange
+    config.sandbox.container_pool_size = 0
+    
+    # Act
+    DockerRuntime.setup(config)
+    
+    # Assert - pool was not created
+    mock_container_pool_class.assert_not_called()
+
+
+def test_container_pool_config_option():
+    """Test that container pool size configuration option exists and works."""
+    config = OpenHandsConfig()
+    
+    # Test default value
+    assert config.sandbox.container_pool_size == 0
+    
+    # Test setting value
+    config.sandbox.container_pool_size = 3
+    assert config.sandbox.container_pool_size == 3

@@ -1,0 +1,24 @@
+# OpenHands configuration with container pool enabled
+
+[core]
+max_iterations = 100
+cache_dir = "/tmp/openhands_cache"
+
+[sandbox]
+# Enable container pool with 2 pre-started containers
+container_pool_size = 2
+
+# Use a lightweight base image for testing
+base_container_image = "python:3.12-slim"
+runtime_container_image = ""
+
+# Other sandbox settings
+timeout = 120
+use_host_network = false
+runtime_binding_address = "0.0.0.0"
+keep_runtime_alive = false
+rm_all_containers = false
+
+[llm]
+model = "gpt-4"
+api_key = "your-api-key-here"

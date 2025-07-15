@@ -89,6 +89,13 @@ class SandboxConfig(BaseModel):
     )
 
     cuda_visible_devices: str | None = Field(default=None)
+    
+    # Container pool configuration
+    container_pool_size: int = Field(
+        default=0,
+        description='Number of containers to keep ready in the pool. Set to 0 to disable container pooling.',
+    )
+    
     model_config = ConfigDict(extra='forbid')
 
     @classmethod

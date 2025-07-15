@@ -23,6 +23,7 @@ from openhands.runtime.impl.action_execution.action_execution_client import (
     ActionExecutionClient,
 )
 from openhands.runtime.impl.docker.containers import stop_all_containers
+from openhands.runtime.impl.docker.container_pool import ContainerPool
 from openhands.runtime.plugins import PluginRequirement
 from openhands.runtime.runtime_status import RuntimeStatus
 from openhands.runtime.utils import find_available_tcp_port
@@ -76,6 +77,8 @@ class DockerRuntime(ActionExecutionClient):
     """
 
     _shutdown_listener_id: UUID | None = None
+    _container_pool: ContainerPool | None = None
+    _pool_lock = None
 
     def __init__(
         self,
@@ -146,30 +149,84 @@ class DockerRuntime(ActionExecutionClient):
                 f'Installing extra user-provided dependencies in the runtime image: {self.config.sandbox.runtime_extra_deps}',
             )
 
+    @classmethod
+    async def _ensure_container_pool(cls, config: OpenHandsConfig) -> None:
+        """Ensure the container pool is initialized."""
+        if cls._pool_lock is None:
+            import asyncio
+            cls._pool_lock = asyncio.Lock()
+            
+        async with cls._pool_lock:
+            if cls._container_pool is None and config.sandbox.container_pool_size > 0:
+                docker_client = cls._init_docker_client()
+                runtime_builder = DockerRuntimeBuilder(docker_client)
+                cls._container_pool = ContainerPool(
+                    config=config,
+                    docker_client=docker_client,
+                    runtime_builder=runtime_builder,
+                    pool_size=config.sandbox.container_pool_size,
+                )
+                await cls._container_pool.start()
+                logger.info(f"Container pool initialized with size {config.sandbox.container_pool_size}")
+
+    @classmethod
+    async def _shutdown_container_pool(cls) -> None:
+        """Shutdown the container pool."""
+        if cls._pool_lock is None:
+            return
+            
+        async with cls._pool_lock:
+            if cls._container_pool is not None:
+                await cls._container_pool.stop()
+                cls._container_pool = None
+                logger.info("Container pool shut down")
+
     @property
     def action_execution_server_url(self) -> str:
         return self.api_url
 
     async def connect(self) -> None:
         self.set_runtime_status(RuntimeStatus.STARTING_RUNTIME)
-        try:
-            await call_sync_from_async(self._attach_to_container)
-        except docker.errors.NotFound as e:
-            if self.attach_to_existing:
-                self.log(
-                    'warning',
-                    f'Container {self.container_name} not found.',
-                )
-                raise AgentRuntimeDisconnectedError from e
-            self.maybe_build_runtime_container_image()
-            self.log(
-                'info', f'Starting runtime with image: {self.runtime_container_image}'
-            )
-            await call_sync_from_async(self.init_container)
+        
+        # Try to get a container from the pool first
+        pooled_container = None
+        if not self.attach_to_existing:
+            await self._ensure_container_pool(self.config)
+            if self._container_pool is not None:
+                pooled_container = await self._container_pool.get_container(self.sid)
+                
+        if pooled_container is not None:
+            # Use pooled container
+            self.container = pooled_container.container
+            self._host_port = pooled_container.container_port
+            self._container_port = pooled_container.container_port
+            self._vscode_port = pooled_container.vscode_port
+            self._app_ports = pooled_container.app_ports
+            self.api_url = f'{self.config.sandbox.local_runtime_url}:{self._container_port}'
             self.log(
                 'info',
-                f'Container started: {self.container_name}. VSCode URL: {self.vscode_url}',
+                f'Using pooled container: {self.container_name}. VSCode URL: {self.vscode_url}',
             )
+        else:
+            # Fall back to regular container creation
+            try:
+                await call_sync_from_async(self._attach_to_container)
+            except docker.errors.NotFound as e:
+                if self.attach_to_existing:
+                    self.log(
+                        'warning',
+                        f'Container {self.container_name} not found.',
+                    )
+                    raise AgentRuntimeDisconnectedError from e
+                self.maybe_build_runtime_container_image()
+                self.log(
+                    'info', f'Starting runtime with image: {self.runtime_container_image}'
+                )
+                await call_sync_from_async(self.init_container)
+                self.log(
+                    'info',
+                    f'Container started: {self.container_name}. VSCode URL: {self.vscode_url}',
+                )
 
         if DEBUG_RUNTIME and self.container:
             self.log_streamer = LogStreamer(self.container, self.log)
@@ -561,3 +618,41 @@ class DockerRuntime(ActionExecutionClient):
             app_config=self.config,
             main_module=self.main_module,
         )
+
+    @classmethod
+    def setup(cls, config: OpenHandsConfig, headless_mode: bool = False):
+        """Set up the environment for runtimes to be created."""
+        super().setup(config, headless_mode)
+        # Initialize container pool if configured
+        if config.sandbox.container_pool_size > 0:
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If we're in an async context, schedule the setup
+                    asyncio.create_task(cls._ensure_container_pool(config))
+                else:
+                    # If we're not in an async context, run it
+                    loop.run_until_complete(cls._ensure_container_pool(config))
+            except RuntimeError:
+                # No event loop, create one
+                asyncio.run(cls._ensure_container_pool(config))
+
+    @classmethod
+    def teardown(cls, config: OpenHandsConfig):
+        """Tear down the environment in which runtimes are created."""
+        super().teardown(config)
+        # Shutdown container pool
+        if cls._container_pool is not None:
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If we're in an async context, schedule the shutdown
+                    asyncio.create_task(cls._shutdown_container_pool())
+                else:
+                    # If we're not in an async context, run it
+                    loop.run_until_complete(cls._shutdown_container_pool())
+            except RuntimeError:
+                # No event loop, create one
+                asyncio.run(cls._shutdown_container_pool())

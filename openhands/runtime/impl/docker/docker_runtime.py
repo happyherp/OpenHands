@@ -151,7 +151,7 @@ class DockerRuntime(ActionExecutionClient):
             )
 
     @classmethod
-    async def _ensure_container_pool(cls, config: OpenHandsConfig) -> None:
+    async def _ensure_container_pool(cls, config: OpenHandsConfig, plugins: list[PluginRequirement] | None = None) -> None:
         """Ensure the container pool is initialized."""
         if cls._pool_lock is None:
             import asyncio
@@ -166,6 +166,7 @@ class DockerRuntime(ActionExecutionClient):
                     docker_client=docker_client,
                     runtime_builder=runtime_builder,
                     pool_size=config.sandbox.container_pool_size,
+                    plugins=plugins,
                 )
                 await cls._container_pool.start()
                 logger.info(f"Container pool initialized with size {config.sandbox.container_pool_size}")
@@ -192,7 +193,7 @@ class DockerRuntime(ActionExecutionClient):
         # Try to get a container from the pool first
         pooled_container = None
         if not self.attach_to_existing:
-            await self._ensure_container_pool(self.config)
+            await self._ensure_container_pool(self.config, self.plugins)
             if self._container_pool is not None:
                 pooled_container = await self._container_pool.get_container(self.sid)
                 

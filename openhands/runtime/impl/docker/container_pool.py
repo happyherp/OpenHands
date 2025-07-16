@@ -17,7 +17,7 @@ from openhands.runtime.utils.command import (
     DEFAULT_MAIN_MODULE,
     get_action_execution_server_startup_command,
 )
-from openhands.runtime.plugins import PluginRequirement
+from openhands.runtime.plugins import PluginRequirement, JupyterRequirement, AgentSkillsRequirement
 from openhands.runtime.utils.runtime_build import build_runtime_image
 from openhands.runtime.builder import DockerRuntimeBuilder
 
@@ -50,11 +50,22 @@ class ContainerPool:
         docker_client: docker.DockerClient,
         runtime_builder: DockerRuntimeBuilder,
         pool_size: int = 0,
+        plugins: Optional[List[PluginRequirement]] = None,
     ):
         self.config = config
         self.docker_client = docker_client
         self.runtime_builder = runtime_builder
         self.pool_size = pool_size
+        
+        # Use default plugins if none provided
+        if plugins is None:
+            # Default plugins that most agents use
+            self.plugins = [
+                AgentSkillsRequirement(),
+                JupyterRequirement(),
+            ]
+        else:
+            self.plugins = plugins
         
         self._pool: Dict[str, PooledContainer] = {}
         self._pool_lock = asyncio.Lock()
@@ -238,7 +249,7 @@ class ContainerPool:
             # Get startup command
             command = get_action_execution_server_startup_command(
                 server_port=container_port,
-                plugins=[],  # No plugins for pooled containers initially
+                plugins=self.plugins,  # Use the configured plugins
                 app_config=self.config,
                 main_module=DEFAULT_MAIN_MODULE,
             )

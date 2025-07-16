@@ -34,7 +34,7 @@ from openhands.runtime.utils.command import (
     DEFAULT_MAIN_MODULE,
     get_action_execution_server_startup_command,
 )
-from openhands.runtime.utils.image_agnostic import build_runtime_image
+from openhands.runtime.utils.runtime_build import build_runtime_image
 from openhands.runtime.utils.log_streamer import LogStreamer
 from openhands.utils.async_utils import call_sync_from_async
 from openhands.utils.shutdown_listener import add_shutdown_listener

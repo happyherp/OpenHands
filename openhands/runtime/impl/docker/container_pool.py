@@ -68,6 +68,9 @@ class ContainerPool:
         self._pool_lock = asyncio.Lock()
         self._maintenance_task: Optional[asyncio.Task] = None
         self._shutdown = False
+        self._last_failure_time: Optional[float] = None
+        self._failure_backoff_seconds = 300  # 5 minutes backoff after failures
+        self._max_containers_per_batch = 3  # Limit concurrent container creation
 
     async def start(self) -> None:
         """Start the container pool."""
@@ -145,6 +148,13 @@ class ContainerPool:
 
     async def _fill_pool(self) -> None:
         """Fill the pool with pre-started containers."""
+        # Check if we should skip due to recent failures
+        current_time = time.time()
+        if (self._last_failure_time is not None and 
+            current_time - self._last_failure_time < self._failure_backoff_seconds):
+            logger.debug('Skipping pool fill due to recent failures (backoff period)')
+            return
+
         async with self._pool_lock:
             current_available = sum(1 for pc in self._pool.values() if not pc.reserved)
             needed = self.pool_size - current_available
@@ -152,25 +162,37 @@ class ContainerPool:
             if needed <= 0:
                 return
 
-        logger.info(f'Creating {needed} containers for pool')
+        # Limit the number of containers created in one batch to prevent resource exhaustion
+        containers_to_create = min(needed, self._max_containers_per_batch)
+        logger.info(f'Creating {containers_to_create} containers for pool (needed: {needed})')
 
-        # Create containers concurrently
-        tasks = []
-        for _ in range(needed):
-            task = asyncio.create_task(self._create_pooled_container())
-            tasks.append(task)
-
-        # Wait for all containers to be created
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
+        # Create containers one by one to avoid overwhelming the system
+        # and to properly track successful creations
         success_count = 0
-        for result in results:
-            if isinstance(result, Exception):
-                logger.error(f'Error creating pooled container: {result}')
-            elif result is not None:
-                success_count += 1
+        for i in range(containers_to_create):
+            try:
+                result = await self._create_pooled_container()
+                if result is not None:
+                    success_count += 1
+                else:
+                    logger.warning(f'Failed to create pooled container {i+1}/{containers_to_create}')
+                    # Stop trying if we're failing to create containers
+                    # to prevent infinite loops and resource exhaustion
+                    self._last_failure_time = current_time
+                    break
+            except Exception as e:
+                logger.error(f'Error creating pooled container {i+1}/{containers_to_create}: {e}')
+                # Stop trying if we're getting exceptions
+                self._last_failure_time = current_time
+                break
 
-        logger.info(f'Successfully created {success_count} pooled containers')
+        if success_count > 0:
+            logger.info(f'Successfully created {success_count} pooled containers')
+            # Reset failure time on success
+            self._last_failure_time = None
+        else:
+            logger.warning('Failed to create any pooled containers')
+            self._last_failure_time = current_time
 
     async def _create_pooled_container(self) -> Optional[PooledContainer]:
         """Create a single pre-started container for the pool."""

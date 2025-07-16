@@ -75,17 +75,19 @@ def test_volumes_mode_extraction():
     """Test that the mount mode is correctly extracted from sandbox.volumes."""
     import os
 
-    from openhands.runtime.impl.docker.docker_runtime import DockerRuntime
+    from openhands.runtime.impl.docker.container_factory import ContainerFactory
 
-    # Create a DockerRuntime instance with a mock config
-    runtime = DockerRuntime.__new__(DockerRuntime)
-    runtime.config = MagicMock()
-    runtime.config.sandbox.volumes = '/host/path:/container/path:ro'
-    runtime.config.workspace_mount_path = '/host/path'
-    runtime.config.workspace_mount_path_in_sandbox = '/container/path'
+    # Create a ContainerFactory instance with a mock config
+    config = MagicMock()
+    config.sandbox.volumes = '/host/path:/container/path:ro'
+    config.workspace_mount_path = '/host/path'
+    config.workspace_mount_path_in_sandbox = '/container/path'
+
+    factory = ContainerFactory.__new__(ContainerFactory)
+    factory.config = config
 
     # Call the actual method that processes volumes
-    volumes = runtime._process_volumes()
+    volumes = factory._process_volumes()
 
     # Assert that the mode was correctly set to 'ro'
     assert volumes[os.path.abspath('/host/path')]['mode'] == 'ro'
@@ -98,20 +100,22 @@ def test_volumes_multiple_mounts():
     """Test that multiple mounts in sandbox.volumes are correctly processed."""
     import os
 
-    from openhands.runtime.impl.docker.docker_runtime import DockerRuntime
+    from openhands.runtime.impl.docker.container_factory import ContainerFactory
 
-    # Create a DockerRuntime instance with a mock config
-    runtime = DockerRuntime.__new__(DockerRuntime)
-    runtime.config = MagicMock()
-    runtime.config.runtime_mount = None
-    runtime.config.sandbox.volumes = (
+    # Create a ContainerFactory instance with a mock config
+    config = MagicMock()
+    config.runtime_mount = None
+    config.sandbox.volumes = (
         '/host/path1:/container/path1,/host/path2:/container/path2:ro'
     )
-    runtime.config.workspace_mount_path = '/host/path1'
-    runtime.config.workspace_mount_path_in_sandbox = '/container/path1'
+    config.workspace_mount_path = '/host/path1'
+    config.workspace_mount_path_in_sandbox = '/container/path1'
+
+    factory = ContainerFactory.__new__(ContainerFactory)
+    factory.config = config
 
     # Call the actual method that processes volumes
-    volumes = runtime._process_volumes()
+    volumes = factory._process_volumes()
 
     # Assert that both mounts were processed correctly
     assert len(volumes) == 2
@@ -125,17 +129,19 @@ def test_multiple_volumes():
     """Test that multiple volumes are correctly processed."""
     import os
 
-    from openhands.runtime.impl.docker.docker_runtime import DockerRuntime
+    from openhands.runtime.impl.docker.container_factory import ContainerFactory
 
-    # Create a DockerRuntime instance with a mock config
-    runtime = DockerRuntime.__new__(DockerRuntime)
-    runtime.config = MagicMock()
-    runtime.config.sandbox.volumes = '/host/path1:/container/path1,/host/path2:/container/path2,/host/path3:/container/path3:ro'
-    runtime.config.workspace_mount_path = '/host/path1'
-    runtime.config.workspace_mount_path_in_sandbox = '/container/path1'
+    # Create a ContainerFactory instance with a mock config
+    config = MagicMock()
+    config.sandbox.volumes = '/host/path1:/container/path1,/host/path2:/container/path2,/host/path3:/container/path3:ro'
+    config.workspace_mount_path = '/host/path1'
+    config.workspace_mount_path_in_sandbox = '/container/path1'
+
+    factory = ContainerFactory.__new__(ContainerFactory)
+    factory.config = config
 
     # Call the actual method that processes volumes
-    volumes = runtime._process_volumes()
+    volumes = factory._process_volumes()
 
     # Assert that all mounts were processed correctly
     assert len(volumes) == 3
@@ -151,17 +157,19 @@ def test_volumes_default_mode():
     """Test that the default mount mode (rw) is used when not specified in sandbox.volumes."""
     import os
 
-    from openhands.runtime.impl.docker.docker_runtime import DockerRuntime
+    from openhands.runtime.impl.docker.container_factory import ContainerFactory
 
-    # Create a DockerRuntime instance with a mock config
-    runtime = DockerRuntime.__new__(DockerRuntime)
-    runtime.config = MagicMock()
-    runtime.config.sandbox.volumes = '/host/path:/container/path'
-    runtime.config.workspace_mount_path = '/host/path'
-    runtime.config.workspace_mount_path_in_sandbox = '/container/path'
+    # Create a ContainerFactory instance with a mock config
+    config = MagicMock()
+    config.sandbox.volumes = '/host/path:/container/path'
+    config.workspace_mount_path = '/host/path'
+    config.workspace_mount_path_in_sandbox = '/container/path'
+
+    factory = ContainerFactory.__new__(ContainerFactory)
+    factory.config = config
 
     # Call the actual method that processes volumes
-    volumes = runtime._process_volumes()
+    volumes = factory._process_volumes()
 
     # Assert that the mode remains 'rw' (default)
     assert volumes[os.path.abspath('/host/path')]['mode'] == 'rw'

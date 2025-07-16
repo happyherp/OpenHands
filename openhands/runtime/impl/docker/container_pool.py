@@ -12,23 +12,12 @@ from docker.models.containers import Container
 from openhands.core.config import OpenHandsConfig
 from openhands.core.logger import openhands_logger as logger
 from openhands.runtime.builder import DockerRuntimeBuilder
-from openhands.runtime.impl.docker.constants import (
-    APP_PORT_RANGE_1,
-    APP_PORT_RANGE_2,
-    EXECUTION_SERVER_PORT_RANGE,
-    VSCODE_PORT_RANGE,
-)
+from openhands.runtime.impl.docker.container_factory import ContainerFactory
 from openhands.runtime.plugins import (
     AgentSkillsRequirement,
     JupyterRequirement,
     PluginRequirement,
 )
-from openhands.runtime.utils import find_available_tcp_port
-from openhands.runtime.utils.command import (
-    DEFAULT_MAIN_MODULE,
-    get_action_execution_server_startup_command,
-)
-from openhands.runtime.utils.runtime_build import build_runtime_image
 
 
 @dataclass
@@ -69,6 +58,11 @@ class ContainerPool:
             ]
         else:
             self.plugins = plugins
+
+        # Create container factory for consistent container creation
+        self.container_factory = ContainerFactory(
+            config, docker_client, runtime_builder
+        )
 
         self._pool: dict[str, PooledContainer] = {}
         self._pool_lock = asyncio.Lock()
@@ -181,103 +175,21 @@ class ContainerPool:
     async def _create_pooled_container(self) -> Optional[PooledContainer]:
         """Create a single pre-started container for the pool."""
         try:
-            # Generate unique container ID
+            # Generate unique container ID and name
             container_id = str(uuid.uuid4())
             container_name = f'openhands-pool-{container_id}'
 
-            # Find available ports
-            container_port = self._find_available_port(EXECUTION_SERVER_PORT_RANGE)
-            vscode_port = self._find_available_port(VSCODE_PORT_RANGE)
-            app_ports = [
-                self._find_available_port(APP_PORT_RANGE_1),
-                self._find_available_port(APP_PORT_RANGE_2),
-            ]
-
-            # Build runtime image if needed
-            runtime_container_image = self.config.sandbox.runtime_container_image
-            if runtime_container_image is None:
-                if self.config.sandbox.base_container_image is None:
-                    raise ValueError(
-                        'Neither runtime container image nor base container image is set'
-                    )
-                runtime_container_image = build_runtime_image(
-                    self.config.sandbox.base_container_image,
-                    self.runtime_builder,
-                    platform=self.config.sandbox.platform,
-                    extra_deps=self.config.sandbox.runtime_extra_deps,
-                    force_rebuild=self.config.sandbox.force_rebuild_runtime,
-                    extra_build_args=self.config.sandbox.runtime_extra_build_args,
+            # Use container factory to create the container
+            # No volumes for pooled containers initially - they'll be added when assigned
+            container, container_port, vscode_port, app_ports = (
+                await asyncio.get_event_loop().run_in_executor(
+                    None,
+                    self.container_factory.create_container,
+                    container_name,
+                    self.plugins,
+                    {},  # Empty volumes for pooled containers
                 )
-
-            # Prepare environment variables
-            environment = {
-                'port': str(container_port),
-                'PYTHONUNBUFFERED': '1',
-                'VSCODE_PORT': str(vscode_port),
-                'APP_PORT_1': str(app_ports[0]),
-                'APP_PORT_2': str(app_ports[1]),
-                'PIP_BREAK_SYSTEM_PACKAGES': '1',
-            }
-
-            # Add debug flag if needed
-            if self.config.debug:
-                environment['DEBUG'] = 'true'
-
-            # Add runtime startup env vars
-            environment.update(self.config.sandbox.runtime_startup_env_vars)
-
-            # Prepare port mapping
-            use_host_network = self.config.sandbox.use_host_network
-            network_mode = 'host' if use_host_network else None
-            port_mapping = None
-
-            if not use_host_network:
-                port_mapping = {
-                    f'{container_port}/tcp': [
-                        {
-                            'HostPort': str(container_port),
-                            'HostIp': self.config.sandbox.runtime_binding_address,
-                        }
-                    ],
-                    f'{vscode_port}/tcp': [
-                        {
-                            'HostPort': str(vscode_port),
-                            'HostIp': self.config.sandbox.runtime_binding_address,
-                        }
-                    ],
-                }
-
-                for port in app_ports:
-                    port_mapping[f'{port}/tcp'] = [
-                        {
-                            'HostPort': str(port),
-                            'HostIp': self.config.sandbox.runtime_binding_address,
-                        }
-                    ]
-
-            # Get startup command
-            command = get_action_execution_server_startup_command(
-                server_port=container_port,
-                plugins=self.plugins,  # Use the configured plugins
-                app_config=self.config,
-                main_module=DEFAULT_MAIN_MODULE,
             )
-
-            # Create and start container
-            container = self.docker_client.containers.run(  # type: ignore[call-overload]
-                runtime_container_image,
-                command=command,
-                entrypoint=[],
-                network_mode=network_mode,
-                ports=port_mapping,
-                working_dir='/openhands/code/',
-                name=container_name,
-                detach=True,
-                environment=environment,
-                volumes={},  # No volumes for pooled containers initially
-                **(self.config.sandbox.docker_runtime_kwargs or {}),
-            )
-            assert isinstance(container, Container)  # Type assertion for mypy
 
             # Wait for container to be ready
             await self._wait_for_container_ready(container, container_port)
@@ -339,25 +251,7 @@ class ContainerPool:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, check_alive)
 
-    def _find_available_port(
-        self, port_range: tuple[int, int], max_attempts: int = 5
-    ) -> int:
-        """Find an available port in the given range."""
-        port = port_range[1]
-        for _ in range(max_attempts):
-            port = find_available_tcp_port(port_range[0], port_range[1])
-            if not self._is_port_in_use_docker(port):
-                return port
-        return port
 
-    def _is_port_in_use_docker(self, port: int) -> bool:
-        """Check if a port is in use by any Docker container."""
-        containers = self.docker_client.containers.list()
-        for container in containers:
-            container_ports = container.ports
-            if str(port) in str(container_ports):
-                return True
-        return False
 
     async def _maintenance_loop(self) -> None:
         """Background task to maintain the pool."""

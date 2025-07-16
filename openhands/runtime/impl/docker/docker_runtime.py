@@ -22,8 +22,15 @@ from openhands.runtime.builder import DockerRuntimeBuilder
 from openhands.runtime.impl.action_execution.action_execution_client import (
     ActionExecutionClient,
 )
-from openhands.runtime.impl.docker.containers import stop_all_containers
+from openhands.runtime.impl.docker.constants import (
+    APP_PORT_RANGE_1,
+    APP_PORT_RANGE_2,
+    CONTAINER_NAME_PREFIX,
+    EXECUTION_SERVER_PORT_RANGE,
+    VSCODE_PORT_RANGE,
+)
 from openhands.runtime.impl.docker.container_pool import ContainerPool
+from openhands.runtime.impl.docker.containers import stop_all_containers
 from openhands.runtime.plugins import PluginRequirement
 from openhands.runtime.runtime_status import RuntimeStatus
 from openhands.runtime.utils import find_available_tcp_port
@@ -36,14 +43,6 @@ from openhands.runtime.utils.runtime_build import build_runtime_image
 from openhands.utils.async_utils import call_sync_from_async
 from openhands.utils.shutdown_listener import add_shutdown_listener
 from openhands.utils.tenacity_stop import stop_if_should_exit
-
-from openhands.runtime.impl.docker.constants import (
-    CONTAINER_NAME_PREFIX,
-    EXECUTION_SERVER_PORT_RANGE,
-    VSCODE_PORT_RANGE,
-    APP_PORT_RANGE_1,
-    APP_PORT_RANGE_2,
-)
 
 
 def _is_retryablewait_until_alive_error(exception: Exception) -> bool:
@@ -151,12 +150,15 @@ class DockerRuntime(ActionExecutionClient):
             )
 
     @classmethod
-    async def _ensure_container_pool(cls, config: OpenHandsConfig, plugins: list[PluginRequirement] | None = None) -> None:
+    async def _ensure_container_pool(
+        cls, config: OpenHandsConfig, plugins: list[PluginRequirement] | None = None
+    ) -> None:
         """Ensure the container pool is initialized."""
         if cls._pool_lock is None:
             import asyncio
+
             cls._pool_lock = asyncio.Lock()
-            
+
         async with cls._pool_lock:
             if cls._container_pool is None and config.sandbox.container_pool_size > 0:
                 docker_client = cls._init_docker_client()
@@ -169,19 +171,21 @@ class DockerRuntime(ActionExecutionClient):
                     plugins=plugins,
                 )
                 await cls._container_pool.start()
-                logger.info(f"Container pool initialized with size {config.sandbox.container_pool_size}")
+                logger.info(
+                    f'Container pool initialized with size {config.sandbox.container_pool_size}'
+                )
 
     @classmethod
     async def _shutdown_container_pool(cls) -> None:
         """Shutdown the container pool."""
         if cls._pool_lock is None:
             return
-            
+
         async with cls._pool_lock:
             if cls._container_pool is not None:
                 await cls._container_pool.stop()
                 cls._container_pool = None
-                logger.info("Container pool shut down")
+                logger.info('Container pool shut down')
 
     @property
     def action_execution_server_url(self) -> str:
@@ -189,14 +193,14 @@ class DockerRuntime(ActionExecutionClient):
 
     async def connect(self) -> None:
         self.set_runtime_status(RuntimeStatus.STARTING_RUNTIME)
-        
+
         # Try to get a container from the pool first
         pooled_container = None
         if not self.attach_to_existing:
             await self._ensure_container_pool(self.config, self.plugins)
             if self._container_pool is not None:
                 pooled_container = await self._container_pool.get_container(self.sid)
-                
+
         if pooled_container is not None:
             # Use pooled container
             self.container = pooled_container.container
@@ -204,7 +208,9 @@ class DockerRuntime(ActionExecutionClient):
             self._container_port = pooled_container.container_port
             self._vscode_port = pooled_container.vscode_port
             self._app_ports = pooled_container.app_ports
-            self.api_url = f'{self.config.sandbox.local_runtime_url}:{self._container_port}'
+            self.api_url = (
+                f'{self.config.sandbox.local_runtime_url}:{self._container_port}'
+            )
             self.log(
                 'info',
                 f'Using pooled container: {self.container_name}. VSCode URL: {self.vscode_url}',
@@ -222,7 +228,8 @@ class DockerRuntime(ActionExecutionClient):
                     raise AgentRuntimeDisconnectedError from e
                 self.maybe_build_runtime_container_image()
                 self.log(
-                    'info', f'Starting runtime with image: {self.runtime_container_image}'
+                    'info',
+                    f'Starting runtime with image: {self.runtime_container_image}',
                 )
                 await call_sync_from_async(self.init_container)
                 self.log(
@@ -516,7 +523,7 @@ class DockerRuntime(ActionExecutionClient):
         self.check_if_alive()
 
     def close(self, rm_all_containers: bool | None = None) -> None:
-        """Closes the DockerRuntime and associated objects
+        """Closes the DockerRuntime and associated objects.
 
         Parameters:
         - rm_all_containers (bool): Whether to remove all containers with the 'openhands-sandbox-' prefix
@@ -575,7 +582,9 @@ class DockerRuntime(ActionExecutionClient):
 
     def pause(self) -> None:
         """Pause the runtime by stopping the container.
-        This is different from container.stop() as it ensures environment variables are properly preserved."""
+
+        This is different from container.stop() as it ensures environment variables are properly preserved.
+        """
         if not self.container:
             raise RuntimeError('Container not initialized')
 
@@ -588,7 +597,9 @@ class DockerRuntime(ActionExecutionClient):
 
     def resume(self) -> None:
         """Resume the runtime by starting the container.
-        This is different from container.start() as it ensures environment variables are properly restored."""
+
+        This is different from container.start() as it ensures environment variables are properly restored.
+        """
         if not self.container:
             raise RuntimeError('Container not initialized')
 
@@ -628,6 +639,7 @@ class DockerRuntime(ActionExecutionClient):
         # Initialize container pool if configured
         if config.sandbox.container_pool_size > 0:
             import asyncio
+
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
@@ -647,6 +659,7 @@ class DockerRuntime(ActionExecutionClient):
         # Shutdown container pool
         if cls._container_pool is not None:
             import asyncio
+
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():

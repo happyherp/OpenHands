@@ -22,26 +22,23 @@ from openhands.runtime.builder import DockerRuntimeBuilder
 from openhands.runtime.impl.action_execution.action_execution_client import (
     ActionExecutionClient,
 )
+from openhands.runtime.impl.docker.constants import (
+    CONTAINER_NAME_PREFIX,
+)
+from openhands.runtime.impl.docker.container_factory import ContainerFactory
+from openhands.runtime.impl.docker.container_pool import ContainerPool
 from openhands.runtime.impl.docker.containers import stop_all_containers
 from openhands.runtime.plugins import PluginRequirement
 from openhands.runtime.runtime_status import RuntimeStatus
-from openhands.runtime.utils import find_available_tcp_port
 from openhands.runtime.utils.command import (
     DEFAULT_MAIN_MODULE,
     get_action_execution_server_startup_command,
 )
-from openhands.runtime.utils.log_streamer import LogStreamer
 from openhands.runtime.utils.runtime_build import build_runtime_image
+from openhands.runtime.utils.log_streamer import LogStreamer
 from openhands.utils.async_utils import call_sync_from_async
 from openhands.utils.shutdown_listener import add_shutdown_listener
 from openhands.utils.tenacity_stop import stop_if_should_exit
-
-CONTAINER_NAME_PREFIX = 'openhands-runtime-'
-
-EXECUTION_SERVER_PORT_RANGE = (30000, 39999)
-VSCODE_PORT_RANGE = (40000, 49999)
-APP_PORT_RANGE_1 = (50000, 54999)
-APP_PORT_RANGE_2 = (55000, 59999)
 
 
 def _is_retryablewait_until_alive_error(exception: Exception) -> bool:
@@ -76,6 +73,8 @@ class DockerRuntime(ActionExecutionClient):
     """
 
     _shutdown_listener_id: UUID | None = None
+    _container_pool: ContainerPool | None = None
+    _pool_lock = None
 
     def __init__(
         self,
@@ -122,6 +121,11 @@ class DockerRuntime(ActionExecutionClient):
         self.main_module = main_module
 
         self.runtime_builder = DockerRuntimeBuilder(self.docker_client)
+        
+        # Create container factory for consistent container creation
+        self.container_factory = ContainerFactory(
+            config, self.docker_client, self.runtime_builder
+        )
 
         # Buffer for container logs
         self.log_streamer: LogStreamer | None = None
@@ -146,30 +150,93 @@ class DockerRuntime(ActionExecutionClient):
                 f'Installing extra user-provided dependencies in the runtime image: {self.config.sandbox.runtime_extra_deps}',
             )
 
+    @classmethod
+    async def _ensure_container_pool(
+        cls, config: OpenHandsConfig, plugins: list[PluginRequirement] | None = None
+    ) -> None:
+        """Ensure the container pool is initialized."""
+        if cls._pool_lock is None:
+            import asyncio
+
+            cls._pool_lock = asyncio.Lock()
+
+        async with cls._pool_lock:
+            if cls._container_pool is None and config.sandbox.container_pool_size > 0:
+                docker_client = cls._init_docker_client()
+                runtime_builder = DockerRuntimeBuilder(docker_client)
+                cls._container_pool = ContainerPool(
+                    config=config,
+                    docker_client=docker_client,
+                    runtime_builder=runtime_builder,
+                    pool_size=config.sandbox.container_pool_size,
+                    plugins=plugins,
+                )
+                await cls._container_pool.start()
+                logger.info(
+                    f'Container pool initialized with size {config.sandbox.container_pool_size}'
+                )
+
+    @classmethod
+    async def _shutdown_container_pool(cls) -> None:
+        """Shutdown the container pool."""
+        if cls._pool_lock is None:
+            return
+
+        async with cls._pool_lock:
+            if cls._container_pool is not None:
+                await cls._container_pool.stop()
+                cls._container_pool = None
+                logger.info('Container pool shut down')
+
     @property
     def action_execution_server_url(self) -> str:
         return self.api_url
 
     async def connect(self) -> None:
         self.set_runtime_status(RuntimeStatus.STARTING_RUNTIME)
-        try:
-            await call_sync_from_async(self._attach_to_container)
-        except docker.errors.NotFound as e:
-            if self.attach_to_existing:
-                self.log(
-                    'warning',
-                    f'Container {self.container_name} not found.',
-                )
-                raise AgentRuntimeDisconnectedError from e
-            self.maybe_build_runtime_container_image()
-            self.log(
-                'info', f'Starting runtime with image: {self.runtime_container_image}'
+
+        # Try to get a container from the pool first
+        pooled_container = None
+        if not self.attach_to_existing:
+            await self._ensure_container_pool(self.config, self.plugins)
+            if self._container_pool is not None:
+                pooled_container = await self._container_pool.get_container(self.sid)
+
+        if pooled_container is not None:
+            # Use pooled container
+            self.container = pooled_container.container
+            self._host_port = pooled_container.container_port
+            self._container_port = pooled_container.container_port
+            self._vscode_port = pooled_container.vscode_port
+            self._app_ports = pooled_container.app_ports
+            self.api_url = (
+                f'{self.config.sandbox.local_runtime_url}:{self._container_port}'
             )
-            await call_sync_from_async(self.init_container)
             self.log(
                 'info',
-                f'Container started: {self.container_name}. VSCode URL: {self.vscode_url}',
+                f'Using pooled container: {self.container_name}. VSCode URL: {self.vscode_url}',
             )
+        else:
+            # Fall back to regular container creation
+            try:
+                await call_sync_from_async(self._attach_to_container)
+            except docker.errors.NotFound as e:
+                if self.attach_to_existing:
+                    self.log(
+                        'warning',
+                        f'Container {self.container_name} not found.',
+                    )
+                    raise AgentRuntimeDisconnectedError from e
+                self.maybe_build_runtime_container_image()
+                self.log(
+                    'info',
+                    f'Starting runtime with image: {self.runtime_container_image}',
+                )
+                await call_sync_from_async(self.init_container)
+                self.log(
+                    'info',
+                    f'Container started: {self.container_name}. VSCode URL: {self.vscode_url}',
+                )
 
         if DEBUG_RUNTIME and self.container:
             self.log_streamer = LogStreamer(self.container, self.log)
@@ -223,181 +290,39 @@ class DockerRuntime(ActionExecutionClient):
             )
             raise ex
 
-    def _process_volumes(self) -> dict[str, dict[str, str]]:
-        """Process volume mounts based on configuration.
 
-        Returns:
-            A dictionary mapping host paths to container bind mounts with their modes.
-        """
-        # Initialize volumes dictionary
-        volumes: dict[str, dict[str, str]] = {}
-
-        # Process volumes (comma-delimited)
-        if self.config.sandbox.volumes is not None:
-            # Handle multiple mounts with comma delimiter
-            mounts = self.config.sandbox.volumes.split(',')
-
-            for mount in mounts:
-                parts = mount.split(':')
-                if len(parts) >= 2:
-                    host_path = os.path.abspath(parts[0])
-                    container_path = parts[1]
-                    # Default mode is 'rw' if not specified
-                    mount_mode = parts[2] if len(parts) > 2 else 'rw'
-
-                    volumes[host_path] = {
-                        'bind': container_path,
-                        'mode': mount_mode,
-                    }
-                    logger.debug(
-                        f'Mount dir (sandbox.volumes): {host_path} to {container_path} with mode: {mount_mode}'
-                    )
-
-        # Legacy mounting with workspace_* parameters
-        elif (
-            self.config.workspace_mount_path is not None
-            and self.config.workspace_mount_path_in_sandbox is not None
-        ):
-            mount_mode = 'rw'  # Default mode
-
-            # e.g. result would be: {"/home/user/openhands/workspace": {'bind': "/workspace", 'mode': 'rw'}}
-            # Add os.path.abspath() here so that relative paths can be used when workspace_mount_path is configured in config.toml
-            volumes[os.path.abspath(self.config.workspace_mount_path)] = {
-                'bind': self.config.workspace_mount_path_in_sandbox,
-                'mode': mount_mode,
-            }
-            logger.debug(
-                f'Mount dir (legacy): {self.config.workspace_mount_path} with mode: {mount_mode}'
-            )
-
-        return volumes
 
     def init_container(self) -> None:
         self.log('debug', 'Preparing to start container...')
         self.set_runtime_status(RuntimeStatus.STARTING_RUNTIME)
-        self._host_port = self._find_available_port(EXECUTION_SERVER_PORT_RANGE)
-        self._container_port = self._host_port
-        # Use the configured vscode_port if provided, otherwise find an available port
-        self._vscode_port = (
-            self.config.sandbox.vscode_port
-            or self._find_available_port(VSCODE_PORT_RANGE)
-        )
-        self._app_ports = [
-            self._find_available_port(APP_PORT_RANGE_1),
-            self._find_available_port(APP_PORT_RANGE_2),
-        ]
-        self.api_url = f'{self.config.sandbox.local_runtime_url}:{self._container_port}'
-
-        use_host_network = self.config.sandbox.use_host_network
-        network_mode: typing.Literal['host'] | None = (
-            'host' if use_host_network else None
-        )
-
-        # Initialize port mappings
-        port_mapping: dict[str, list[dict[str, str]]] | None = None
-        if not use_host_network:
-            port_mapping = {
-                f'{self._container_port}/tcp': [
-                    {
-                        'HostPort': str(self._host_port),
-                        'HostIp': self.config.sandbox.runtime_binding_address,
-                    }
-                ],
-            }
-
-            if self.vscode_enabled:
-                port_mapping[f'{self._vscode_port}/tcp'] = [
-                    {
-                        'HostPort': str(self._vscode_port),
-                        'HostIp': self.config.sandbox.runtime_binding_address,
-                    }
-                ]
-
-            for port in self._app_ports:
-                port_mapping[f'{port}/tcp'] = [
-                    {
-                        'HostPort': str(port),
-                        'HostIp': self.config.sandbox.runtime_binding_address,
-                    }
-                ]
-        else:
-            self.log(
-                'warn',
-                'Using host network mode. If you are using MacOS, please make sure you have the latest version of Docker Desktop and enabled host network feature: https://docs.docker.com/network/drivers/host/#docker-desktop',
-            )
-
-        # Combine environment variables
-        environment = dict(**self.initial_env_vars)
-        environment.update(
-            {
-                'port': str(self._container_port),
-                'PYTHONUNBUFFERED': '1',
-                # Passing in the ports means nested runtimes do not come up with their own ports!
-                'VSCODE_PORT': str(self._vscode_port),
-                'APP_PORT_1': str(self._app_ports[0]),
-                'APP_PORT_2': str(self._app_ports[1]),
-                'PIP_BREAK_SYSTEM_PACKAGES': '1',
-            }
-        )
-        if self.config.debug or DEBUG:
-            environment['DEBUG'] = 'true'
-        # also update with runtime_startup_env_vars
-        environment.update(self.config.sandbox.runtime_startup_env_vars)
-
+        
+        # Build runtime image if needed
+        self.maybe_build_runtime_container_image()
+        
         self.log('debug', f'Workspace Base: {self.config.workspace_base}')
-
-        # Process volumes for mounting
-        volumes = self._process_volumes()
-
-        # If no volumes were configured, set to None
-        if not volumes:
-            logger.debug(
-                'Mount dir is not set, will not mount the workspace directory to the container'
-            )
-            volumes = {}  # Empty dict instead of None to satisfy mypy
         self.log(
             'debug',
             f'Sandbox workspace: {self.config.workspace_mount_path_in_sandbox}',
         )
 
-        command = self.get_action_execution_server_startup_command()
-        self.log('info', f'Starting server with command: {command}')
-
-        if self.config.sandbox.enable_gpu:
-            gpu_ids = self.config.sandbox.cuda_visible_devices
-            if gpu_ids is None:
-                device_requests = [
-                    docker.types.DeviceRequest(capabilities=[['gpu']], count=-1)
-                ]
-            else:
-                device_requests = [
-                    docker.types.DeviceRequest(
-                        capabilities=[['gpu']],
-                        device_ids=[str(i) for i in gpu_ids.split(',')],
-                    )
-                ]
-        else:
-            device_requests = None
+        # Use container factory to create the container
         try:
-            if self.runtime_container_image is None:
-                raise ValueError('Runtime container image is not set')
-            self.container = self.docker_client.containers.run(
-                self.runtime_container_image,
-                command=command,
-                # Override the default 'bash' entrypoint because the command is a binary.
-                entrypoint=[],
-                network_mode=network_mode,
-                ports=port_mapping,
-                working_dir='/openhands/code/',  # do not change this!
-                name=self.container_name,
-                detach=True,
-                environment=environment,
-                volumes=volumes,  # type: ignore
-                device_requests=device_requests,
-                **(self.config.sandbox.docker_runtime_kwargs or {}),
+            self.container, self._container_port, self._vscode_port, self._app_ports = (
+                self.container_factory.create_container(
+                    container_name=self.container_name,
+                    plugins=self.plugins,
+                    initial_env_vars=self.initial_env_vars,
+                    vscode_port=self.config.sandbox.vscode_port,  # Use configured port if available
+                )
             )
+            
+            # Set host port to match container port
+            self._host_port = self._container_port
+            self.api_url = f'{self.config.sandbox.local_runtime_url}:{self._container_port}'
+            
             self.log('debug', f'Container started. Server url: {self.api_url}')
             self.set_runtime_status(RuntimeStatus.RUNTIME_STARTED)
+            
         except Exception as e:
             self.log(
                 'error',
@@ -457,7 +382,7 @@ class DockerRuntime(ActionExecutionClient):
         self.check_if_alive()
 
     def close(self, rm_all_containers: bool | None = None) -> None:
-        """Closes the DockerRuntime and associated objects
+        """Closes the DockerRuntime and associated objects.
 
         Parameters:
         - rm_all_containers (bool): Whether to remove all containers with the 'openhands-sandbox-' prefix
@@ -484,16 +409,7 @@ class DockerRuntime(ActionExecutionClient):
                 return True
         return False
 
-    def _find_available_port(
-        self, port_range: tuple[int, int], max_attempts: int = 5
-    ) -> int:
-        port = port_range[1]
-        for _ in range(max_attempts):
-            port = find_available_tcp_port(port_range[0], port_range[1])
-            if not self._is_port_in_use_docker(port):
-                return port
-        # If no port is found after max_attempts, return the last tried port
-        return port
+
 
     @property
     def vscode_url(self) -> str | None:
@@ -516,7 +432,9 @@ class DockerRuntime(ActionExecutionClient):
 
     def pause(self) -> None:
         """Pause the runtime by stopping the container.
-        This is different from container.stop() as it ensures environment variables are properly preserved."""
+
+        This is different from container.stop() as it ensures environment variables are properly preserved.
+        """
         if not self.container:
             raise RuntimeError('Container not initialized')
 
@@ -529,7 +447,9 @@ class DockerRuntime(ActionExecutionClient):
 
     def resume(self) -> None:
         """Resume the runtime by starting the container.
-        This is different from container.start() as it ensures environment variables are properly restored."""
+
+        This is different from container.start() as it ensures environment variables are properly restored.
+        """
         if not self.container:
             raise RuntimeError('Container not initialized')
 
@@ -561,3 +481,43 @@ class DockerRuntime(ActionExecutionClient):
             app_config=self.config,
             main_module=self.main_module,
         )
+
+    @classmethod
+    def setup(cls, config: OpenHandsConfig, headless_mode: bool = False):
+        """Set up the environment for runtimes to be created."""
+        super().setup(config, headless_mode)
+        # Initialize container pool if configured
+        if config.sandbox.container_pool_size > 0:
+            import asyncio
+
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If we're in an async context, schedule the setup
+                    asyncio.create_task(cls._ensure_container_pool(config))
+                else:
+                    # If we're not in an async context, run it
+                    loop.run_until_complete(cls._ensure_container_pool(config))
+            except RuntimeError:
+                # No event loop, create one
+                asyncio.run(cls._ensure_container_pool(config))
+
+    @classmethod
+    def teardown(cls, config: OpenHandsConfig):
+        """Tear down the environment in which runtimes are created."""
+        super().teardown(config)
+        # Shutdown container pool
+        if cls._container_pool is not None:
+            import asyncio
+
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If we're in an async context, schedule the shutdown
+                    asyncio.create_task(cls._shutdown_container_pool())
+                else:
+                    # If we're not in an async context, run it
+                    loop.run_until_complete(cls._shutdown_container_pool())
+            except RuntimeError:
+                # No event loop, create one
+                asyncio.run(cls._shutdown_container_pool())

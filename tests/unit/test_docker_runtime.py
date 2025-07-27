@@ -178,10 +178,10 @@ def test_container_engine_parameter_docker(mock_init_docker, config, event_strea
     }
     mock_init_docker.return_value = mock_docker_client
     config.sandbox.container_engine = 'docker'
-    
+
     # Act
-    runtime = DockerRuntime(config, event_stream, sid='test-sid')
-    
+    DockerRuntime(config, event_stream, sid='test-sid')
+
     # Assert
     mock_init_docker.assert_called_once_with('docker')
 
@@ -197,9 +197,9 @@ def test_container_engine_parameter_podman(mock_init_docker, config, event_strea
     }
     mock_init_docker.return_value = mock_docker_client
     config.sandbox.container_engine = 'podman'
-    
+
     # Act
-    runtime = DockerRuntime(config, event_stream, sid='test-sid')
-    
+    DockerRuntime(config, event_stream, sid='test-sid')
+
     # Assert
     mock_init_docker.assert_called_once_with('podman')

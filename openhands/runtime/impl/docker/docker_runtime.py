@@ -229,13 +229,13 @@ class DockerRuntime(ActionExecutionClient):
                 # For Podman, we need to connect to the Podman socket
                 # Podman provides Docker-compatible API
                 import subprocess
-                
+
                 # Check if Podman is available and running
                 try:
                     result = subprocess.run(
-                        ['podman', 'version'], 
-                        capture_output=True, 
-                        text=True, 
+                        ['podman', 'version'],
+                        capture_output=True,
+                        text=True,
                         check=True
                     )
                     logger.info(f'Using Podman container engine: {result.stdout.split()[1] if result.stdout else "unknown version"}')
@@ -243,14 +243,14 @@ class DockerRuntime(ActionExecutionClient):
                     raise RuntimeError(
                         f'Podman is not available or not running. Please install Podman and ensure it is running. Error: {e}'
                     )
-                
+
                 # Try to connect to Podman socket (rootless first, then system)
                 import os
-                
+
                 # Try rootless Podman socket first (more secure)
                 rootless_socket = f'unix:///run/user/{os.getuid()}/podman/podman.sock'
                 system_socket = 'unix:///run/podman/podman.sock'
-                
+                errors = {}
                 for socket_path in [rootless_socket, system_socket]:
                     try:
                         client = docker.DockerClient(base_url=socket_path)
@@ -258,12 +258,13 @@ class DockerRuntime(ActionExecutionClient):
                         client.ping()
                         logger.info(f'Connected to Podman via {socket_path}')
                         return client
-                    except Exception:
+                    except Exception as e:
+                        errors[socket_path] = e
                         continue
-                
-                # Fallback to default Docker client connection (might work with Podman in Docker compatibility mode)
-                logger.warning('Could not connect to Podman socket, trying Docker-compatible connection')
-                return docker.from_env()
+
+                raise RuntimeError(
+                        f'Could not connect to podman. Errors: {errors}'
+                    )
             else:
                 # Default Docker connection
                 return docker.from_env()

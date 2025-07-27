@@ -1,4 +1,5 @@
 import os
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
@@ -86,6 +87,15 @@ class SandboxConfig(BaseModel):
     volumes: str | None = Field(
         default=None,
         description="Volume mounts in the format 'host_path:container_path[:mode]', e.g. '/my/host/dir:/workspace:rw'. Multiple mounts can be specified using commas, e.g. '/path1:/workspace/path1,/path2:/workspace/path2:ro'",
+    )
+    container_engine: Literal['docker', 'podman'] = Field(
+        default='docker',
+        description=(
+            'Container engine to use for running sandbox containers. '
+            'Options: "docker" (default) or "podman". '
+            'Podman can provide better security isolation and rootless operation. '
+            'Note: The chosen engine must be installed and accessible.'
+        ),
     )
 
     cuda_visible_devices: str | None = Field(default=None)

@@ -165,3 +165,41 @@ def test_volumes_default_mode():
 
     # Assert that the mode remains 'rw' (default)
     assert volumes[os.path.abspath('/host/path')]['mode'] == 'rw'
+
+
+@patch('openhands.runtime.impl.docker.docker_runtime.DockerRuntime._init_docker_client')
+def test_container_engine_parameter_docker(mock_init_docker, config, event_stream):
+    """Test that container_engine parameter is passed to _init_docker_client for Docker."""
+    # Arrange
+    mock_docker_client = MagicMock()
+    mock_docker_client.version.return_value = {
+        'Version': '20.10.0',
+        'Components': [{'Name': 'Engine', 'Version': '20.10.0'}],
+    }
+    mock_init_docker.return_value = mock_docker_client
+    config.sandbox.container_engine = 'docker'
+    
+    # Act
+    runtime = DockerRuntime(config, event_stream, sid='test-sid')
+    
+    # Assert
+    mock_init_docker.assert_called_once_with('docker')
+
+
+@patch('openhands.runtime.impl.docker.docker_runtime.DockerRuntime._init_docker_client')
+def test_container_engine_parameter_podman(mock_init_docker, config, event_stream):
+    """Test that container_engine parameter is passed to _init_docker_client for Podman."""
+    # Arrange
+    mock_docker_client = MagicMock()
+    mock_docker_client.version.return_value = {
+        'Version': '4.9.0',
+        'Components': [{'Name': 'Podman Engine', 'Version': '4.9.0'}],
+    }
+    mock_init_docker.return_value = mock_docker_client
+    config.sandbox.container_engine = 'podman'
+    
+    # Act
+    runtime = DockerRuntime(config, event_stream, sid='test-sid')
+    
+    # Assert
+    mock_init_docker.assert_called_once_with('podman')

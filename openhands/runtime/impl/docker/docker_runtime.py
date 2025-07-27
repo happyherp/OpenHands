@@ -118,7 +118,9 @@ class DockerRuntime(ActionExecutionClient):
                 f'http://{os.environ["DOCKER_HOST_ADDR"]}'
             )
 
-        self.docker_client: docker.DockerClient = self._init_docker_client()
+        self.docker_client: docker.DockerClient = self._init_docker_client(
+            self.config.sandbox.container_engine
+        )
         self.api_url = f'{self.config.sandbox.local_runtime_url}:{self._container_port}'
 
         self.base_container_image = self.config.sandbox.base_container_image
@@ -220,13 +222,55 @@ class DockerRuntime(ActionExecutionClient):
             )
 
     @staticmethod
-    @lru_cache(maxsize=1)
-    def _init_docker_client() -> docker.DockerClient:
+    @lru_cache(maxsize=2)  # Cache for both docker and podman
+    def _init_docker_client(container_engine: str = 'docker') -> docker.DockerClient:
         try:
-            return docker.from_env()
+            if container_engine == 'podman':
+                # For Podman, we need to connect to the Podman socket
+                # Podman provides Docker-compatible API
+                import subprocess
+                
+                # Check if Podman is available and running
+                try:
+                    result = subprocess.run(
+                        ['podman', 'version'], 
+                        capture_output=True, 
+                        text=True, 
+                        check=True
+                    )
+                    logger.info(f'Using Podman container engine: {result.stdout.split()[1] if result.stdout else "unknown version"}')
+                except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                    raise RuntimeError(
+                        f'Podman is not available or not running. Please install Podman and ensure it is running. Error: {e}'
+                    )
+                
+                # Try to connect to Podman socket (rootless first, then system)
+                import os
+                
+                # Try rootless Podman socket first (more secure)
+                rootless_socket = f'unix:///run/user/{os.getuid()}/podman/podman.sock'
+                system_socket = 'unix:///run/podman/podman.sock'
+                
+                for socket_path in [rootless_socket, system_socket]:
+                    try:
+                        client = docker.DockerClient(base_url=socket_path)
+                        # Test the connection
+                        client.ping()
+                        logger.info(f'Connected to Podman via {socket_path}')
+                        return client
+                    except Exception:
+                        continue
+                
+                # Fallback to default Docker client connection (might work with Podman in Docker compatibility mode)
+                logger.warning('Could not connect to Podman socket, trying Docker-compatible connection')
+                return docker.from_env()
+            else:
+                # Default Docker connection
+                return docker.from_env()
         except Exception as ex:
+            engine_name = container_engine.capitalize()
             logger.error(
-                'Launch docker client failed. Please make sure you have installed docker and started docker desktop/daemon.',
+                f'Launch {engine_name} client failed. Please make sure you have installed {engine_name} and started {engine_name} desktop/daemon.',
             )
             raise ex
 

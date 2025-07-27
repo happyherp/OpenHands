@@ -302,6 +302,12 @@ classpath = "my_package.my_module.MyCustomAgent"
 # Whether to initialize plugins
 #initialize_plugins = true
 
+# Container engine to use for running sandbox containers
+# Options: "docker" (default) or "podman"
+# Podman can provide better security isolation and rootless operation
+# Note: The chosen engine must be installed and accessible
+#container_engine = "docker"
+
 # Extra dependencies to install in the runtime image
 #runtime_extra_deps = ""
 

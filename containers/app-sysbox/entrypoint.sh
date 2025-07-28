@@ -1,7 +1,27 @@
 #!/bin/bash
 set -eo pipefail
 
-echo "Starting OpenHands..."
+echo "Starting OpenHands with Sysbox..."
+
+# Start Docker daemon in background for Sysbox
+echo "Starting dockerd..."
+dockerd &
+
+# Wait for dockerd to be ready with proper health check
+echo "Waiting for dockerd to be ready..."
+for i in {1..30}; do
+    if docker info >/dev/null 2>&1; then
+        echo "dockerd is ready!"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        echo "ERROR: dockerd failed to start within 30 seconds"
+        exit 1
+    fi
+    sleep 1
+done
+
+# Continue with OpenHands setup
 if [[ $NO_SETUP == "true" ]]; then
   echo "Skipping setup, running as $(whoami)"
   "$@"
@@ -43,19 +63,13 @@ else
     fi
   fi
   usermod -aG app enduser
-  # get the user group of /var/run/docker.sock and set openhands to that group
-  DOCKER_SOCKET_GID=$(stat -c '%g' /var/run/docker.sock)
-  echo "Docker socket group id: $DOCKER_SOCKET_GID"
-  if getent group $DOCKER_SOCKET_GID; then
-    echo "Group with id $DOCKER_SOCKET_GID already exists"
-  else
-    echo "Creating group with id $DOCKER_SOCKET_GID"
-    groupadd -g $DOCKER_SOCKET_GID docker
-  fi
+
+  # For Sysbox, we don't need to handle Docker socket permissions since Docker runs inside the container
+  # But we still add the user to the docker group for Docker commands
+  usermod -aG docker enduser
 
   mkdir -p /home/enduser/.cache/huggingface/hub/
 
-  usermod -aG $DOCKER_SOCKET_GID enduser
   echo "Running as enduser"
   su enduser /bin/bash -c "${*@Q}" # This magically runs any arguments passed to the script as a command
 fi

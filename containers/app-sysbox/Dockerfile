@@ -85,9 +85,15 @@ RUN python openhands/core/download.py # No-op to download assets
 RUN find /app \! -group app -exec chgrp app {} +
 
 COPY --chown=openhands:app --chmod=770 --from=frontend-builder /app/build ./frontend/build
-COPY --chown=openhands:app --chmod=770 ./containers/app/entrypoint.sh /app/entrypoint.sh
 
+# Install Docker for Sysbox compatibility
 USER root
+RUN apt-get update && apt-get install -y \
+    docker.io \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/bin/dockerd /usr/local/bin/dockerd
+
+COPY --chown=openhands:app --chmod=770 ./containers/app-sysbox/entrypoint.sh /app/entrypoint.sh
 
 WORKDIR /app
 

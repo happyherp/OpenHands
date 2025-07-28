@@ -8,5 +8,6 @@ by the `ghcr.yml` workflow.
 
 ```bash
 docker build -f containers/app/Dockerfile -t openhands .
+docker build -f containers/app-sysbox/Dockerfile -t oh-sysbox .
 docker build -f containers/sandbox/Dockerfile -t sandbox .
 ```

@@ -19,12 +19,10 @@ const decodeHtmlEntities = (text: string): string => {
  */
 const isLikelyDirectory = (path: string): boolean => {
   if (!path) return false;
-  // Check if path already ends with a slash
-  if (path.endsWith("/") || path.endsWith("\\")) return true;
-  // Check if path has no extension (simple heuristic)
-  const lastPart = path.split(/[/\\]/).pop() || "";
-  // If the last part has no dots, it's likely a directory
-  return !lastPart.includes(".");
+  // Only treat paths as directories if they explicitly end with a slash
+  // This is because PathComponent is used in file operation contexts (read, write, edit)
+  // where the paths are always files, never directories
+  return path.endsWith("/") || path.endsWith("\\");
 };
 
 /**

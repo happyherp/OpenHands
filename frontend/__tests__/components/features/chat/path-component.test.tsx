@@ -16,9 +16,17 @@ describe("isLikelyDirectory", () => {
     expect(isLikelyDirectory("dir\\")).toBe(true);
   });
 
-  it("should return true for paths without extension", () => {
-    expect(isLikelyDirectory("/path/to/dir")).toBe(true);
-    expect(isLikelyDirectory("dir")).toBe(true);
+  it("should return false for files without extension (like Dockerfile)", () => {
+    expect(isLikelyDirectory("Dockerfile")).toBe(false);
+    expect(isLikelyDirectory("/path/to/Dockerfile")).toBe(false);
+    expect(isLikelyDirectory("Makefile")).toBe(false);
+    expect(isLikelyDirectory("README")).toBe(false);
+    expect(isLikelyDirectory("LICENSE")).toBe(false);
+  });
+
+  it("should return false for unknown files without extension", () => {
+    expect(isLikelyDirectory("/path/to/somefile")).toBe(false);
+    expect(isLikelyDirectory("unknownfile")).toBe(false);
   });
 
   it("should return false for paths ending with dot", () => {

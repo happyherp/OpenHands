@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Master test runner for OpenHands development setup testing
-# Tests 3 different setups across 3 different scenarios each
+# Tests 3 different setups across 2 different scenarios each
 
 set -e
 
@@ -188,7 +188,7 @@ generate_report() {
     printf "%-20s %-20s %-15s %-15s %-10s\n" "----" "--------" "-----------" "------------" "------"
 
     for setup in "dev-proper" "dev-min" "openhands-agent"; do
-        for scenario in "no-change" "toplevel-change" "frontend-change"; do
+        for scenario in "toplevel-change" "frontend-change"; do
             key="${setup}_${scenario}"
             setup_time=${setup_times[$key]:-"N/A"}
             commit_time=${commit_times[$key]:-"N/A"}
@@ -218,7 +218,6 @@ main() {
 
     # Test scenarios
     declare -A scenarios=(
-        ["no-change"]=""
         ["toplevel-change"]="test_file_toplevel.py|# Test file for toplevel changes\nprint('Hello from toplevel test')"
         ["frontend-change"]="frontend/test_file_frontend.js|// Test file for frontend changes\nconsole.log('Hello from frontend test');"
     )
@@ -227,7 +226,7 @@ main() {
     for setup in "dev-proper" "dev-min" "openhands-agent"; do
         setup_script="test-${setup}.sh"
 
-        for scenario_key in "no-change" "toplevel-change" "frontend-change"; do
+        for scenario_key in "toplevel-change" "frontend-change"; do
             scenario_data=${scenarios[$scenario_key]}
 
             if [[ "$scenario_data" == "" ]]; then

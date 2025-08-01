@@ -144,6 +144,9 @@ def load_from_toml(cfg: OpenHandsConfig, toml_file: str = 'config.toml') -> None
         )
         return
 
+    # Log successful config loading
+    logger.openhands_logger.info(f'config {os.path.abspath(toml_file)}')
+
     # Check for the [core] section
     if 'core' not in toml_config:
         logger.openhands_logger.warning(
@@ -473,6 +476,9 @@ def get_agent_config_arg(
         )
         return None
 
+    # Log successful config loading
+    logger.openhands_logger.info(f'config {os.path.abspath(toml_file)}')
+
     # update the agent config with the specified section
     if 'agent' in toml_config and agent_config_arg in toml_config['agent']:
         return AgentConfig(**toml_config['agent'][agent_config_arg])
@@ -537,6 +543,9 @@ def get_llm_config_arg(
         )
         return None
 
+    # Log successful config loading
+    logger.openhands_logger.info(f'config {os.path.abspath(toml_file)}')
+
     # update the llm config with the specified section
     if 'llm' in toml_config and llm_config_arg in toml_config['llm']:
         return LLMConfig(**toml_config['llm'][llm_config_arg])
@@ -599,6 +608,9 @@ def get_condenser_config_arg(
             f'Cannot parse condenser group [{condenser_config_arg}] from {toml_file}. Exception: {e}'
         )
         return None
+
+    # Log successful config loading
+    logger.openhands_logger.info(f'config {os.path.abspath(toml_file)}')
 
     # Check if the condenser section and the specific config exist
     if (

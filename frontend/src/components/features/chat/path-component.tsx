@@ -21,10 +21,58 @@ const isLikelyDirectory = (path: string): boolean => {
   if (!path) return false;
   // Check if path already ends with a slash
   if (path.endsWith("/") || path.endsWith("\\")) return true;
-  // Check if path has no extension (simple heuristic)
+
   const lastPart = path.split(/[/\\]/).pop() || "";
-  // If the last part has no dots, it's likely a directory
-  return !lastPart.includes(".");
+
+  // Common files without extensions that should NOT be treated as directories
+  const commonFilesWithoutExtensions = [
+    "Dockerfile",
+    "Makefile",
+    "README",
+    "LICENSE",
+    "CHANGELOG",
+    "CONTRIBUTING",
+    "AUTHORS",
+    "COPYING",
+    "INSTALL",
+    "NEWS",
+    "TODO",
+    "VERSION",
+    "MANIFEST",
+    "Gemfile",
+    "Rakefile",
+    "Procfile",
+    "Vagrantfile",
+    "Jenkinsfile",
+    "dockerfile",
+    "makefile",
+    "readme",
+    "license",
+    "changelog",
+    "contributing",
+    "authors",
+    "copying",
+    "install",
+    "news",
+    "todo",
+    "version",
+    "manifest",
+    "gemfile",
+    "rakefile",
+    "procfile",
+    "vagrantfile",
+    "jenkinsfile",
+  ];
+
+  // If it's a known file without extension, it's definitely a file
+  if (commonFilesWithoutExtensions.includes(lastPart)) {
+    return false;
+  }
+
+  // If the last part has no dots, it might be a directory, but we need more context
+  // For now, we'll be conservative and only treat it as a directory if it explicitly ends with a slash
+  // This prevents false positives for files without extensions
+  return false;
 };
 
 /**
